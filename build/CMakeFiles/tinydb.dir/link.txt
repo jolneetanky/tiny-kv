@@ -1,0 +1,1 @@
+/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/tinydb.dir/src/core/db_impl.cpp.o CMakeFiles/tinydb.dir/src/kvstore.cpp.o CMakeFiles/tinydb.dir/src/main.cpp.o -o tinydb
