@@ -2,7 +2,6 @@
 #ifndef DB_H
 #define DB_H
 
-#include <map>
 #include <iostream>
 
 // TODO: make this into an interface or something

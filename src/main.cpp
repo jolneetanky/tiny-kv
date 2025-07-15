@@ -1,22 +1,96 @@
-#include <iostream>
-#include <map>
-// #include "kvstore.h"
+#include <iostream> // std::cout
+#include <sstream>  // std::istringstream
 #include "core/db_impl.h"
+#include "writebuffer/writebuffer.h"
 
-// how are you gonna store those guys?
-// naively, I will use an in-memory key-value store
-// for now i will use `std::map`, which is a BST under the hood and has timeO(logn) for all operations.
-// hm no let's first write a class for our KV store. Just a simple class
+enum class Command
+{
+    PUT,
+    GET,
+    DEL,
+    EXIT,
+    UNKNOWN,
+};
+
+Command parseCommand(const std::string &cmd)
+{
+    if (cmd == "PUT" || cmd == "put")
+        return Command::PUT;
+    if (cmd == "GET" || cmd == "get")
+        return Command::GET;
+    if (cmd == "DEL" || cmd == "del")
+        return Command::DEL;
+    if (cmd == "EXIT" || cmd == "exit")
+        return Command::EXIT;
+    return Command::UNKNOWN;
+}
 
 int main()
 {
-    DbImpl dbImpl; // Creates the object on the stack. Destroyed once this function returns.
-    dbImpl.put("alice", "bob");
-    dbImpl.get("alice");
-    dbImpl.get("non-existent key");
+    WriteBuffer writeBuffer(1);
+    DbImpl dbImpl(writeBuffer); // Creates the object on the stack. Destroyed once this function returns.
 
-    dbImpl.del("alice");
-    dbImpl.del("non-existent key");
-    dbImpl.get("alice");
+    std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
+    std::string line; // variable `line` that stores a (dynamically resized) string
+
+    while (true)
+    {
+        std::cout << "> ";
+        std::getline(std::cin, line); // stores input inside variable `line`
+        std::istringstream iss(line); // instantiate a `std::istringstream` instance with the stream `line`
+
+        // std::cout << iss.str() << "\n"; // print out a copy of the current stream contents
+        // extract cmd, key, value from stream (whitespace-delimited).
+        std::string cmd;
+        iss >> cmd;
+
+        std::string key;
+        iss >> key;
+
+        std::string val;
+        iss >> val;
+
+        Command parsedCmd = {parseCommand(cmd)};
+
+        switch (parsedCmd)
+        {
+        case Command::PUT:
+            if (key.empty() || val.empty())
+            {
+                std::cout << "Usage: PUT <key> <value>" << "\n";
+                break;
+            }
+            dbImpl.put(key, val);
+            break;
+
+        case Command::GET:
+            if (key.empty())
+            {
+                std::cout << "Usage: GET <key>"
+                             "\n";
+                break;
+            }
+            dbImpl.get(key);
+            break;
+
+        case Command::DEL:
+            if (key.empty())
+            {
+                std::cout << "Usage: DEL <key>"
+                             "\n";
+                break;
+            }
+            dbImpl.del(key);
+            break;
+
+        case Command::EXIT:
+            return 0; // return early
+
+        default:
+            std::cout << "Unknown command. Use PUT, GET, DEL, or EXIT." << "\n";
+            break;
+        }
+    }
+
     return 0;
 }
