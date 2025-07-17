@@ -1,7 +1,8 @@
 #include <iostream> // std::cout
 #include <sstream>  // std::istringstream
 #include "core/db_impl.h"
-#include "writebuffer/writebuffer.h"
+#include "writebuffer/writebuffer_impl.h"
+#include "disk_manager/disk_manager_impl.h"
 
 enum class Command
 {
@@ -27,8 +28,9 @@ Command parseCommand(const std::string &cmd)
 
 int main()
 {
-    WriteBuffer writeBuffer(1);
-    DbImpl dbImpl(writeBuffer); // Creates the object on the stack. Destroyed once this function returns.
+    DiskManagerImpl diskManagerImpl("tinyDBstore.txt");
+    WriteBufferImpl writeBufferImpl(2, diskManagerImpl);
+    DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
     std::string line; // variable `line` that stores a (dynamically resized) string

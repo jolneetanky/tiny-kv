@@ -9,20 +9,24 @@
 // }
 
 // member initializer list (before constructor body executes)
-DbImpl::DbImpl(WriteBuffer &writeBuffer) : m_writeBuffer(writeBuffer) {};
+DbImpl::DbImpl(WriteBuffer &writeBuffer, DiskManager &diskManager) : m_writeBuffer(writeBuffer), m_diskManager(diskManager) {};
 
-std::string DbImpl::put(std::string key, std::string val)
+void DbImpl::put(std::string key, std::string val)
 {
     m_writeBuffer.put(key, val);
 
     std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
-    return key;
 }
 
-std::string DbImpl::get(std::string key)
+std::string DbImpl::get(std::string key) const
 {
-    // std::string val = {m_kvStore[key]};
     std::string val{m_writeBuffer.get(key)};
+
+    // If not in buffer, search from disk
+    if (val.empty())
+    {
+        val = m_diskManager.getKey(key);
+    }
 
     if (val.empty())
     {
@@ -30,20 +34,13 @@ std::string DbImpl::get(std::string key)
     }
     else
     {
-
         std::cout << "[DbImpl]" << " GOT: " << val << "\n";
     }
     return val;
 }
 
-std::string DbImpl::del(std::string key)
+void DbImpl::del(std::string key)
 {
-
-    // std::cout << "[DbImpl]" << " DELETED: (" << key << ", " << m_kvStore[key] << ")" << "\n";
-    // std::string val{m_kvStore[key]};
-    // m_kvStore.erase(key);
-    // return val;
-    std::string k{m_writeBuffer.del(key)};
-    // std::cout << "[DbImpl]" << " DELETED: " << key << "\n";
-    return k;
+    m_writeBuffer.del(key);
+    std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
 }

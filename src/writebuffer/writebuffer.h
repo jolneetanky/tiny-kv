@@ -3,20 +3,22 @@
 
 #include <iostream>
 
-// DbImpl inherits from the virtual class DB
+// invariant: at any point in time, the buffer contains `n` elements where `n` <= m_size.
 class WriteBuffer
 {
-private:
-    std::unordered_map<std::string, std::string> m_write_buffer;
+protected:
     int m_size;
 
-    void flushToDisk();
+private:
+    virtual void flushToDisk() = 0;
 
 public:
     WriteBuffer(int size); // constructor
-    std::string put(const std::string &key, const std::string &val);
-    std::string get(const std::string &key);
-    std::string del(const std::string &key);
+    virtual void put(const std::string &key, const std::string &val) = 0;
+    virtual std::string get(const std::string &key) const = 0;
+    virtual void del(const std::string &key) = 0;
+    // Destructor
+    virtual ~WriteBuffer() = default;
 };
 
 #endif

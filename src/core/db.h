@@ -9,11 +9,11 @@
 class DB
 {
 public:
-    virtual std::string put(std::string key, std::string val) = 0;
+    virtual void put(std::string key, std::string val) = 0;
 
-    virtual std::string get(std::string key) = 0;
+    virtual std::string get(std::string key) const = 0;
 
-    virtual std::string del(std::string key) = 0;
+    virtual void del(std::string key) = 0;
 };
 
 #endif

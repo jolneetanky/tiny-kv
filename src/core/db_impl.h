@@ -3,16 +3,18 @@
 
 #include "db.h"
 #include "../writebuffer/writebuffer.h"
+#include "../disk_manager/disk_manager.h"
 class DbImpl : public DB
 {
 private:
     WriteBuffer &m_writeBuffer;
+    DiskManager &m_diskManager;
 
 public:
-    DbImpl(WriteBuffer &writeBuffer); // constructor
-    std::string put(std::string key, std::string val);
-    std::string get(std::string key);
-    std::string del(std::string key);
+    DbImpl(WriteBuffer &writeBuffer, DiskManager &diskManager); // constructor
+    void put(std::string key, std::string val) override;
+    std::string get(std::string key) const override;
+    void del(std::string key) override;
 };
 
 #endif
