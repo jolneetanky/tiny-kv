@@ -29,8 +29,8 @@ void WriteBufferImpl::flushToDisk()
 // PUBLIC FUNCTIONS
 void WriteBufferImpl::put(const std::string &key, const std::string &val)
 {
-    // invariant: at any point in time, the buffer contains `n` elements where `n` <= m_size.
-    // so before adding we need to first check if buffer is full.
+    // invariant: at any point in time, the buffer contains `n` elements where `n` < m_size.
+    // so add the guy first then check if buffer is full.
     m_write_buffer[key] = val;
 
     if (m_write_buffer.size() == m_size)
