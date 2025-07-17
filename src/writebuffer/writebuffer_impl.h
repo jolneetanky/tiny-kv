@@ -15,7 +15,6 @@ private:
     // Helper function to serialize data in buffer before flushing to disk
     std::string serializeData();
     std::string serializeData(const std::string &key, const std::string &val);
-    std::string serializeData(const std::unordered_map<std::string, std::string> &data);
 
 public:
     WriteBufferImpl(int size, DiskManager &diskManager); // constructor

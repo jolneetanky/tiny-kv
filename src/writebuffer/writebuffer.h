@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-// invariant: at any point in time, the buffer contains `n` elements where `n` <= m_size.
+// invariant: at any point in time, the buffer contains `n` elements where `n` < m_size.
 class WriteBuffer
 {
 protected:
