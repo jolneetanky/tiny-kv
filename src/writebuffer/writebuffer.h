@@ -9,9 +9,6 @@ class WriteBuffer
 protected:
     int m_size;
 
-private:
-    virtual void flushToDisk() = 0;
-
 public:
     WriteBuffer(int size); // constructor
     virtual void put(const std::string &key, const std::string &val) = 0;
@@ -19,6 +16,7 @@ public:
     virtual void del(const std::string &key) = 0;
     // Destructor
     virtual ~WriteBuffer() = default;
+    virtual void flushToDisk() = 0;
 };
 
 #endif

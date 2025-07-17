@@ -25,7 +25,7 @@ std::string DbImpl::get(std::string key) const
     // If not in buffer, search from disk
     if (val.empty())
     {
-        val = m_diskManager.getKey(key);
+        val = m_diskManager.get(key);
     }
 
     if (val.empty())

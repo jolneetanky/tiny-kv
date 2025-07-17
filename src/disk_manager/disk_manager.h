@@ -15,7 +15,7 @@ public:
     DiskManager(std::string filename);
     virtual void write(const std::string &serializedData) = 0;
 
-    virtual std::string getKey(const std::string &key) const = 0;
+    virtual std::string get(const std::string &key) const = 0;
 
     virtual void del(const std::string &key) = 0;
 };

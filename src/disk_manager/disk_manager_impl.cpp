@@ -25,7 +25,7 @@ void DiskManagerImpl::write(const std::string &serializedData)
     std::string keystr = serializedData.substr(pos, keysize);
 
     std::cout << "[DiskManagerImpl.write()] keystr: " << keystr << "\n";
-    if (!getKey(keystr).empty())
+    if (!get(keystr).empty())
     {
         del(keystr);
     }
@@ -48,7 +48,7 @@ void DiskManagerImpl::write(const std::string &serializedData)
 }
 
 // current impl: time = O(n)
-std::string DiskManagerImpl::getKey(const std::string &key) const
+std::string DiskManagerImpl::get(const std::string &key) const
 {
     std::string val{""};
 
@@ -75,7 +75,7 @@ std::string DiskManagerImpl::getKey(const std::string &key) const
         // parse the key
         pos = colon1 + 1;
         std::string keystr = line.substr(pos, keysize);
-        std::cout << "[DiskManagerImpl.getKey()] keystr: " << keystr << "\n";
+        std::cout << "[DiskManagerImpl.get()] keystr: " << keystr << "\n";
         if (keystr != key)
             continue;
 

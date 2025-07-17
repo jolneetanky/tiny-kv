@@ -13,7 +13,7 @@ public:
     DiskManagerImpl(std::string filename);
     void write(const std::string &serializedData) override;
 
-    std::string getKey(const std::string &key) const override;
+    std::string get(const std::string &key) const override;
 
     void del(const std::string &key) override;
 };

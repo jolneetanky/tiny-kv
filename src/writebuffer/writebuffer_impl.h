@@ -12,7 +12,6 @@ private:
     DiskManager &m_diskManager;
 
     // Flushes data from buffer to disk
-    void flushToDisk() override;
     // Helper function to serialize data in buffer before flushing to disk
     std::string serializeData();
     std::string serializeData(const std::string &key, const std::string &val);
@@ -23,6 +22,7 @@ public:
     void put(const std::string &key, const std::string &val) override;
     std::string get(const std::string &key) const override;
     void del(const std::string &key) override;
+    void flushToDisk() override;
 };
 
 #endif
