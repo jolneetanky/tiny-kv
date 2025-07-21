@@ -2,45 +2,35 @@
 // TODO: implement the DB interface.
 #include "db_impl.h"
 #include <iostream>
+#include <optional>
 
-// DbImpl::DbImpl(WriteBuffer &writeBuffer)
-// {
-//     m_writeBuffer{writeBuffer};
-// }
-
-// member initializer list (before constructor body executes)
-DbImpl::DbImpl(WriteBuffer &writeBuffer, DiskManager &diskManager) : m_writeBuffer(writeBuffer), m_diskManager(diskManager) {};
+DbImpl::DbImpl(MemTable &memTable) : m_memtable{memTable} {};
 
 void DbImpl::put(std::string key, std::string val)
 {
-    m_writeBuffer.put(key, val);
+    Error* err {m_memtable.put(key, val)};
+
+    if (err != nullptr) {
+        std::cout << "[DbImpl] error: " << err->error << "\n";
+    }
 
     std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
 }
 
 std::string DbImpl::get(std::string key) const
 {
-    std::string val{m_writeBuffer.get(key)};
-
-    // If not in buffer, search from disk
-    if (val.empty())
-    {
-        val = m_diskManager.get(key);
-    }
-
-    if (val.empty())
-    {
+    std::string val{m_memtable.get(key).val};
+    if (val.empty())  {
         std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+    } else {
+        std::cout << "[DbImpl] GOT: " << val << "\n";
     }
-    else
-    {
-        std::cout << "[DbImpl]" << " GOT: " << val << "\n";
-    }
+
     return val;
 }
 
 void DbImpl::del(std::string key)
 {
-    m_writeBuffer.del(key);
+    m_memtable.del(key);
     std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
 }

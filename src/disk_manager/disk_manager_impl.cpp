@@ -8,7 +8,7 @@ DiskManagerImpl::DiskManagerImpl(std::string filename) : DiskManager(filename) {
 // for each new entry we're scanning the whole table to search if the key alr exists
 // currently writes a single row
 // FORMAT: <keysize>:<key>:<val>
-// time = O(n) per row
+// time = O(n) per row due to GET and DEL operation
 void DiskManagerImpl::write(const std::string &serializedData)
 {
     std::cout << "[DiskManagerImpl] serialized data: " << serializedData << "\n";
@@ -25,6 +25,7 @@ void DiskManagerImpl::write(const std::string &serializedData)
     std::string keystr = serializedData.substr(pos, keysize);
 
     std::cout << "[DiskManagerImpl.write()] keystr: " << keystr << "\n";
+    // search for the key in DB. If it exists in DB, delete it.
     if (!get(keystr).empty())
     {
         del(keystr);
@@ -75,7 +76,6 @@ std::string DiskManagerImpl::get(const std::string &key) const
         // parse the key
         pos = colon1 + 1;
         std::string keystr = line.substr(pos, keysize);
-        std::cout << "[DiskManagerImpl.get()] keystr: " << keystr << "\n";
         if (keystr != key)
             continue;
 

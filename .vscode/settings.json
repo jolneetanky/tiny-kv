@@ -47,6 +47,16 @@
         "unordered_map": "cpp",
         "variant": "cpp",
         "vector": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "__config": "cpp",
+        "__tree": "cpp",
+        "format": "cpp",
+        "fstream": "cpp",
+        "functional": "cpp",
+        "iomanip": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "any": "cpp",
+        "regex": "cpp"
     }
 }

@@ -3,3 +3,6 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+
+/benchmark/
+/tinykv_benchmarks

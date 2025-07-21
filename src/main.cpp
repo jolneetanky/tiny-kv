@@ -1,8 +1,8 @@
 #include <iostream> // std::cout
 #include <sstream>  // std::istringstream
 #include "core/db_impl.h"
-#include "writebuffer/writebuffer_impl.h"
-#include "disk_manager/disk_manager_impl.h"
+#include "mem_table/mem_table_impl.h"
+#include "skip_list/skip_list.h"
 
 enum class Command
 {
@@ -28,9 +28,13 @@ Command parseCommand(const std::string &cmd)
 
 int main()
 {
-    DiskManagerImpl diskManagerImpl("tinyDBstore.txt");
-    WriteBufferImpl writeBufferImpl(2, diskManagerImpl);
-    DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
+    // DiskManagerImpl diskManagerImpl("tinyDBstore.txt");
+    // WriteBufferImpl writeBufferImpl(2, diskManagerImpl);
+    // DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
+    // MemTable memTable(50);
+    SkipList skiplist;
+    MemTableImpl memTableImpl(1, skiplist);
+    DbImpl dbImpl(memTableImpl);
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
     std::string line; // variable `line` that stores a (dynamically resized) string
@@ -41,8 +45,6 @@ int main()
         std::getline(std::cin, line); // stores input inside variable `line`
         std::istringstream iss(line); // instantiate a `std::istringstream` instance with the stream `line`
 
-        // std::cout << iss.str() << "\n"; // print out a copy of the current stream contents
-        // extract cmd, key, value from stream (whitespace-delimited).
         std::string cmd;
         iss >> cmd;
 
@@ -62,7 +64,8 @@ int main()
                 std::cout << "Usage: PUT <key> <value>" << "\n";
                 break;
             }
-            dbImpl.put(key, val);
+            // dbImpl.put(key, val);
+            memTableImpl.put(key, val);
             break;
 
         case Command::GET:
@@ -72,7 +75,8 @@ int main()
                              "\n";
                 break;
             }
-            dbImpl.get(key);
+            // dbImpl.get(key);
+            memTableImpl.get(key);
             break;
 
         case Command::DEL:
@@ -82,7 +86,8 @@ int main()
                              "\n";
                 break;
             }
-            dbImpl.del(key);
+            // dbImpl.del(key);
+            memTableImpl.del(key);
             break;
 
         case Command::EXIT:
