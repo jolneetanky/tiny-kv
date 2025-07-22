@@ -17,6 +17,7 @@ Error* MemTableImpl::put(const std::string &key, const std::string &val) {
 
     if (m_skiplist.getLength() == m_size) {
         m_readOnly = true;
+        flushToDisk();
     }
 
     return nullptr;
@@ -28,19 +29,61 @@ Error* MemTableImpl::put(const std::string &key, const std::string &val) {
     // just pass in all entries in m_skiplist.getAll()
 
 };
-const Entry& MemTableImpl::get(const std::string &key) const {
-    return m_skiplist.get(key);
+
+const Entry* MemTableImpl::get(const std::string &key) const {
+    std::cout << "[MemTableImpl.get()] GET";
+    const Entry* ptr {m_skiplist.get(key)};
+
+    if (ptr == nullptr || (*ptr).tombstone == true) {
+        std::cout << "[MemTableImpl.get()] key does not exist in memtable" << "\n";
+        return nullptr;
+    }
+
+    std::cout << "[MemTableImpl.get()] GOT: (" << key << ", " << (*ptr).val << ")" << "\n";
+    return ptr;
 };
 
 void MemTableImpl::del(const std::string &key) {
+    std::cout << "[MemTableImpl.del()]" << std::endl;
+
+    // if isReadOnly(), it's currently being flushed. So we shouldn't do anything to it.
     // mark as tombstone
+    if (isReadOnly()) {
+        m_readOnly = true;
+        std::cout << "[Memtable.put()] Cannot DELETE: memtable in read-only mode (ie. it is being flushed)" << "\n";
+        return;
+    }
+
+    m_skiplist.set(Entry(key, "val,", true));
+
+    if (m_skiplist.getLength() == m_size) {
+        flushToDisk();
+    }
 };
 
 bool MemTableImpl::isReadOnly() {
     return m_readOnly; 
 }
 void MemTableImpl::flushToDisk() {
-    // make memtable read-only
+    std::cout << "[MemTableImpl.flushToDisk()]" << std::endl;
+    m_readOnly = true;
+    
+    // obtain every guy in skiplist IN ORDER.
+    // gather this in a vector or smt and pass that vector into your SSTable builder
+    std::vector<const Entry*> entryPtrs {m_skiplist.getAll()};
 
-    // flush to disk (not sure how to flush - entyr by entry? batch? idk)
+    for (const auto& ptr : entryPtrs) {
+        std::string key {(*ptr).key};
+        std::string val {(*ptr).val};
+
+        std::cout << "(" << key << ", " << val << ")" << std::endl;
+    }
+
+    // write to file
+    // m_ssTableManager.build(entryPtrs);
+
+    // empty skiplist
+    m_skiplist.clear();
+    
+    m_readOnly = false;
 };

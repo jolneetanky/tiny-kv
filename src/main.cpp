@@ -2,7 +2,7 @@
 #include <sstream>  // std::istringstream
 #include "core/db_impl.h"
 #include "mem_table/mem_table_impl.h"
-#include "skip_list/skip_list.h"
+#include "skip_list/skip_list_impl.h"
 
 enum class Command
 {
@@ -32,8 +32,9 @@ int main()
     // WriteBufferImpl writeBufferImpl(2, diskManagerImpl);
     // DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
     // MemTable memTable(50);
-    SkipList skiplist;
-    MemTableImpl memTableImpl(1, skiplist);
+    // SkipList skiplist;
+    SkipListImpl skipListImpl;
+    MemTableImpl memTableImpl(5, skipListImpl);
     DbImpl dbImpl(memTableImpl);
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";

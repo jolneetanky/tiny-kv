@@ -3,6 +3,7 @@
 #include "db_impl.h"
 #include <iostream>
 #include <optional>
+#include "../types/entry.h"
 
 DbImpl::DbImpl(MemTable &memTable) : m_memtable{memTable} {};
 
@@ -19,14 +20,16 @@ void DbImpl::put(std::string key, std::string val)
 
 std::string DbImpl::get(std::string key) const
 {
-    std::string val{m_memtable.get(key).val};
-    if (val.empty())  {
-        std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+    // std::string val{m_memtable.get(key).val};
+    const Entry* ptr {m_memtable.get(key)};
+    if (ptr == nullptr)  {
+        std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist in memtable." << "\n";
+        return "";
     } else {
-        std::cout << "[DbImpl] GOT: " << val << "\n";
+        std::cout << "[DbImpl] GOT: " << (*ptr).val << "\n";
     }
 
-    return val;
+    return (*ptr).val;
 }
 
 void DbImpl::del(std::string key)

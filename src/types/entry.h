@@ -8,6 +8,7 @@ struct Entry {
     std::string val;
     bool tombstone = false;
 
+    Entry() = default; // added jic some guys try to default construct an Entry (eg. std::map)
     Entry(std::string k, std::string v, bool t = false) : key{k}, val{v}, tombstone{t} {};
 
     bool operator<(const Entry &other) const {

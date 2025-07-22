@@ -9,15 +9,13 @@
 // no updates or wtv.
 
 class SkipList {
-    private:
-        // int m_size;
-
     public:
-        // SkipList(int size);
-        void set(Entry const &entry);
-        const Entry& get(const std::string& key);
-        std::vector<Entry> getAll() const;
-        int getLength();
+        virtual void set(Entry const &entry) = 0;
+        virtual const Entry* get(const std::string& key) = 0;
+        // Tells caller that each Entry in this vector cannot be modified.
+        virtual std::vector<const Entry*> getAll() const = 0;
+        virtual void clear() = 0;
+        virtual int getLength() = 0;
 };
 
 #endif

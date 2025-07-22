@@ -7,6 +7,7 @@
 #include "../types/error.h"
 #include "../types/entry.h"
 
+// internal storage of MemTable is an `Entry`.
 class MemTable
 {
 private:
@@ -23,7 +24,7 @@ private:
 
 public:
     virtual Error* put(const std::string &key, const std::string &val) = 0;
-    virtual const Entry& get(const std::string &key) const = 0;
+    virtual const Entry* get(const std::string &key) const = 0;
     virtual void del(const std::string &key) = 0;
     virtual bool isReadOnly() = 0;
     virtual void flushToDisk() = 0;

@@ -18,7 +18,7 @@ class MemTableImpl : public MemTable
 public:
     MemTableImpl(int size, SkipList &skipList); // constructor
     Error* put(const std::string &key, const std::string &val) override;
-    const Entry& get(const std::string &key) const override;
+    const Entry* get(const std::string &key) const override;
     void del(const std::string &key) override;
     bool isReadOnly() override;
 
