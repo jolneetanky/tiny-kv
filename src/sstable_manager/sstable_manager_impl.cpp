@@ -44,7 +44,7 @@ std::string SSTableManagerImpl::serializeEntry(const Entry &entry) {
 // deserialized the serialized binary string
 // data: pointer to a `char` array which we are deserializing. Ie `data` is the base address of some char array
 // `size`: size of data we are deserializing
-Entry deserializeEntry(const char* data, size_t size, size_t& bytesRead) {
+Entry SSTableManagerImpl::deserializeEntry(const char* data, size_t size, size_t& bytesRead) {
     Entry entry;
     size_t pos = 0;
 
@@ -83,7 +83,7 @@ Entry deserializeEntry(const char* data, size_t size, size_t& bytesRead) {
 
 
 // Writes the entire content of a binary string to a file
-bool writeBinaryToFile(const std::string& path, const std::string& data) {
+bool SSTableManagerImpl::writeBinaryToFile(const std::string& path, const std::string& data) {
     // create parent directories in path if needed
     std::filesystem::path fsPath{path};
     std::filesystem::create_directories(fsPath.parent_path());
@@ -102,7 +102,7 @@ bool writeBinaryToFile(const std::string& path, const std::string& data) {
 #include <iostream>
 
 // Reads entire binary file into a string buffer
-bool readBinaryFromFile(const std::string& filename, std::string& outData) {
+bool SSTableManagerImpl::readBinaryFromFile(const std::string& filename, std::string& outData) {
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile) {
         std::cerr << "Failed to open file for reading: " << filename << "\n";
@@ -126,13 +126,13 @@ bool readBinaryFromFile(const std::string& filename, std::string& outData) {
 
 
 // write index
-Error* SSTableManagerImpl::write(std::vector<const Entry*> entries) {
+std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries) {
     std::cout << "[SSTableManagerImpl.write()]" << std::endl;
     std::string allSerializedData;
     for (const auto &entryPtr : entries) {
     if (entryPtr == nullptr) {
-        std::cerr << "[ERROR] Null entry pointer in entries!\n";
-        continue;
+        std::cerr << "[SSTableManagerImpl.write()] Failed to write: Null entry pointer in entries!\n";
+        return Error{ "Failed to write to SSTable"};
     }
        allSerializedData += serializeEntry(*entryPtr);
     }
@@ -140,28 +140,34 @@ Error* SSTableManagerImpl::write(std::vector<const Entry*> entries) {
     std::cout << "[SSTableManagerImpl.write()]" << allSerializedData << std::endl;
     std::string path = "sstables/level-0/table-0";
     if (!writeBinaryToFile(path, allSerializedData)) {
-        return &m_writeError;
+        std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable";
+        return Error{ "Failed to write to SSTable"};
     }
 
     read(path);
-    return nullptr;
+    return std::nullopt;
 };
 
 // gets entries from a particular SSTable and parses into a vector
-std::vector<const Entry*> SSTableManagerImpl::read(std::string file) {
+std::optional<std::vector<Entry>> SSTableManagerImpl::read(std::string file) {
     // read binary from file and store in a string buffer
     std::cout << "[SSTableManagerImpl.read()]" << std::endl;
     std::string serializedEntries;
-    readBinaryFromFile(file, serializedEntries);
+
+    if (!readBinaryFromFile(file, serializedEntries)) {
+        std::cerr << "[SSTableManagerImpl.read()] Failed to read binary from file" << std::endl;
+        return std::nullopt;
+    }
 
     //deserialize each entry.
     size_t bytesRead { 0 };
     size_t offset { 0 };
-    std::vector<const Entry*> entries;
+    std::vector<Entry> entries;
 
     while (offset < serializedEntries.size()) {
+        // PROBLEM: this gets destroyed when function call returns
         Entry entry { deserializeEntry(serializedEntries.data() + offset, serializedEntries.size() - offset, bytesRead)};
-        entries.push_back(&entry);
+        entries.push_back(entry);
         offset += bytesRead;
 
         std::cout << "[SSTableManagerImpl.read()]" << " (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")" << std::endl;
@@ -170,3 +176,7 @@ std::vector<const Entry*> SSTableManagerImpl::read(std::string file) {
     // // deserialize contents in string buffer into entry
     return entries;
 };
+
+std::optional<Entry> SSTableManagerImpl::find(const std::string& key) {
+    return std::nullopt;
+}

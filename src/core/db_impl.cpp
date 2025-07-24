@@ -9,10 +9,11 @@ DbImpl::DbImpl(MemTable &memTable) : m_memtable{memTable} {};
 
 void DbImpl::put(std::string key, std::string val)
 {
-    Error* err {m_memtable.put(key, val)};
+    std::optional<Error> errOpt {m_memtable.put(key, val)};
 
-    if (err != nullptr) {
-        std::cout << "[DbImpl] error: " << err->error << "\n";
+    if (errOpt) {
+        std::cout << "[DbImpl] error: " << errOpt->error << "\n";
+        return;
     }
 
     std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
@@ -20,20 +21,25 @@ void DbImpl::put(std::string key, std::string val)
 
 std::string DbImpl::get(std::string key) const
 {
-    // std::string val{m_memtable.get(key).val};
-    const Entry* ptr {m_memtable.get(key)};
-    if (ptr == nullptr)  {
+    std::optional<Entry> optEntry {m_memtable.get(key)};
+
+    if (!optEntry) {
         std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist in memtable." << "\n";
         return "";
-    } else {
-        std::cout << "[DbImpl] GOT: " << (*ptr).val << "\n";
     }
 
-    return (*ptr).val;
+    std::cout << "[DbImpl] GOT: " << optEntry.value().val << "\n";
+    return optEntry.value().val;
 }
 
 void DbImpl::del(std::string key)
 {
-    m_memtable.del(key);
+    std::optional<Error> errOpt { m_memtable.del(key) };
+
+    if (errOpt) {
+        std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
+        return;
+    }
+
     std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
 }

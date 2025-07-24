@@ -7,8 +7,9 @@
 
 class SSTableManager {
     public:
-        virtual Error* write(std::vector<const Entry*> entries) = 0;
-        virtual std::vector<const Entry*> read(std::string file) = 0;
+        virtual std::optional<Error> write(std::vector<const Entry*> entries) = 0;
+        virtual std::optional<std::vector<Entry>> read(std::string file) = 0;
+        virtual std::optional<Entry> find(const std::string& key) = 0;
         virtual ~SSTableManager() = default;
 };
 

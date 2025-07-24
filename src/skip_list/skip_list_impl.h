@@ -15,16 +15,15 @@
 
 class SkipListImpl : public SkipList{
     private:
-        // jhr::Skip_List<Entry> m_skiplist;
         // TODO: implement your own skiplist. for now im using std::map lol
         std::map<std::string, Entry> m_map;
 
     public:
-        void set(Entry const &entry) override;
-        const Entry* get(const std::string& key) override;
-        std::vector<const Entry*> getAll() const override;
-        void clear() override; // NOTE: after calliing clear, all pointers to `Entry` in the skiplist become invalid.
-        int getLength() override;
+        std::optional<Error> set(Entry const &entry) override;
+        std::optional<Entry> get(const std::string& key) const override;
+        std::optional<std::vector<Entry>> getAll() const override;
+        std::optional<Error> clear() override;
+        std::optional<int> getLength() const override;
 };
 
 #endif

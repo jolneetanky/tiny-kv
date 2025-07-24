@@ -17,14 +17,15 @@ class MemTableImpl : public MemTable
     bool m_readOnly = false;
     SSTableManager &m_ssTableManager;
 
+    bool isReadOnly() const;
+    std::optional<Error> flushToDisk(); // we can just do SkipList.getAll() then flush to disk
+
 public:
     MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager); // constructor
-    Error* put(const std::string &key, const std::string &val) override;
-    const Entry* get(const std::string &key) const override;
-    void del(const std::string &key) override;
-    bool isReadOnly() override;
+    std::optional<Error> put(const std::string &key, const std::string &val) override;
+    std::optional<Entry> get(const std::string &key) const override;
+    std::optional<Error> del(const std::string &key) override;
 
-    void flushToDisk() override; // we can just do SkipList.getAll() then flush to disk
 };
 
 #endif
