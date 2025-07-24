@@ -3,6 +3,7 @@
 #include "core/db_impl.h"
 #include "mem_table/mem_table_impl.h"
 #include "skip_list/skip_list_impl.h"
+#include "sstable_manager/sstable_manager_impl.h"
 
 enum class Command
 {
@@ -33,8 +34,9 @@ int main()
     // DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
     // MemTable memTable(50);
     // SkipList skiplist;
+    SSTableManagerImpl ssTableManagerImpl;
     SkipListImpl skipListImpl;
-    MemTableImpl memTableImpl(5, skipListImpl);
+    MemTableImpl memTableImpl(5, skipListImpl, ssTableManagerImpl);
     DbImpl dbImpl(memTableImpl);
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
@@ -65,8 +67,8 @@ int main()
                 std::cout << "Usage: PUT <key> <value>" << "\n";
                 break;
             }
-            // dbImpl.put(key, val);
-            memTableImpl.put(key, val);
+            dbImpl.put(key, val);
+            // memTableImpl.put(key, val);
             break;
 
         case Command::GET:
@@ -76,8 +78,8 @@ int main()
                              "\n";
                 break;
             }
-            // dbImpl.get(key);
-            memTableImpl.get(key);
+            dbImpl.get(key);
+            // memTableImpl.get(key);
             break;
 
         case Command::DEL:
@@ -87,8 +89,8 @@ int main()
                              "\n";
                 break;
             }
-            // dbImpl.del(key);
-            memTableImpl.del(key);
+            dbImpl.del(key);
+            // memTableImpl.del(key);
             break;
 
         case Command::EXIT:

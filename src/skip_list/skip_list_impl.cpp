@@ -33,7 +33,6 @@ std::vector<const Entry*> SkipListImpl::getAll() const {
     std::cout << "SkipListImpl.getAll()" << std::endl;
     std::vector<const Entry*> res;
     for (const auto& [key, entry] : m_map) {
-        std::cout << "HII" << entry.val << std::endl;
         res.push_back(&entry);
     }
     return res;

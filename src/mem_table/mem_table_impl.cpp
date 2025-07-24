@@ -1,7 +1,7 @@
 #include "mem_table_impl.h"
 #include <optional>
 
-MemTableImpl::MemTableImpl(int size, SkipList &skipList) : m_size{size}, m_skiplist{skipList} {}; // constructor
+MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager) : m_size{size}, m_skiplist{skipList}, m_ssTableManager{ssTableManager} {}; // constructor
 
 Error* MemTableImpl::put(const std::string &key, const std::string &val) {
     // insert into MemTable
@@ -54,7 +54,7 @@ void MemTableImpl::del(const std::string &key) {
         return;
     }
 
-    m_skiplist.set(Entry(key, "val,", true));
+    m_skiplist.set(Entry(key, "val", true));
 
     if (m_skiplist.getLength() == m_size) {
         flushToDisk();
@@ -64,6 +64,7 @@ void MemTableImpl::del(const std::string &key) {
 bool MemTableImpl::isReadOnly() {
     return m_readOnly; 
 }
+
 void MemTableImpl::flushToDisk() {
     std::cout << "[MemTableImpl.flushToDisk()]" << std::endl;
     m_readOnly = true;
@@ -75,12 +76,19 @@ void MemTableImpl::flushToDisk() {
     for (const auto& ptr : entryPtrs) {
         std::string key {(*ptr).key};
         std::string val {(*ptr).val};
+        bool tombstoneFlag {(*ptr).tombstone};
+        std::string tombstone = tombstoneFlag ? "true" : "false";
 
-        std::cout << "(" << key << ", " << val << ")" << std::endl;
+        std::cout << "(" << key << ", " << val << ", " << tombstone << ")" << std::endl;
     }
 
     // write to file
-    // m_ssTableManager.build(entryPtrs);
+    Error* errorPtr { m_ssTableManager.write(entryPtrs) }; // -> writes a new file to level 0.
+
+    if (errorPtr != nullptr) {
+        std::cout << "[MemTableImpl.flushToDisk()] ERROR: " << &errorPtr->error << std::endl;
+        return;
+    }
 
     // empty skiplist
     m_skiplist.clear();
