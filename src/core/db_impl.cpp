@@ -5,7 +5,7 @@
 #include <optional>
 #include "../types/entry.h"
 
-DbImpl::DbImpl(MemTable &memTable) : m_memtable{memTable} {};
+DbImpl::DbImpl(MemTable &memTable, SSTableManager &ssTableManager) : m_memtable{memTable}, m_ssTableManager{ssTableManager} {};
 
 void DbImpl::put(std::string key, std::string val)
 {
@@ -24,8 +24,12 @@ std::string DbImpl::get(std::string key) const
     std::optional<Entry> optEntry {m_memtable.get(key)};
 
     if (!optEntry) {
-        std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist in memtable." << "\n";
-        return "";
+        optEntry = m_ssTableManager.get(key);
+
+        if (!optEntry) {
+            std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist in memtable." << "\n";
+            return "";
+        }
     }
 
     std::cout << "[DbImpl] GOT: " << optEntry.value().val << "\n";

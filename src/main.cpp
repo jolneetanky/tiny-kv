@@ -37,7 +37,7 @@ int main()
     SSTableManagerImpl ssTableManagerImpl;
     SkipListImpl skipListImpl;
     MemTableImpl memTableImpl(5, skipListImpl, ssTableManagerImpl);
-    DbImpl dbImpl(memTableImpl);
+    DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
     std::string line; // variable `line` that stores a (dynamically resized) string
