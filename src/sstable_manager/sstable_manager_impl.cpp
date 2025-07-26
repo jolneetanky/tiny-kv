@@ -252,10 +252,35 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
     // for now get all the files in level 0
 
     // LOCK DIRECTORY ()
+    // NOTE: this is a copy of pointers, modifying it in-place wont change the order of ptrs in ssTablefileManagers
     std::vector<SSTableFileManager*> ssTableFileManagers { getFilesFromDirectory(LEVEL_0_DIRECTORY)}; // makes a copy
+
+    std::sort(ssTableFileManagers.begin(), ssTableFileManagers.end(),
+        [](const SSTableFileManager* a, const SSTableFileManager* b) {
+            auto ta = a->getTimestamp();
+            auto tb = b->getTimestamp();
+
+            // If both have timestamp, compare their values
+            if (ta && tb) {
+                return ta.value() < tb.value();
+            }
+
+            // If only a has timestamp, it should come after b (so b first)
+            if (ta && !tb) return false;
+
+            // If only b has timestamp, it should come after a
+            if (!ta && tb) return true;
+
+            // If neither has timestamp, consider equal
+            return false;
+        }
+    );
 
     for (const auto& fileManager : ssTableFileManagers) {
         std::cout << "[SSTableManagerImpl.find()] HIII" << "\n";
+        std::cout << "[SSTableManagerImpl.find()] " << std::to_string(fileManager->getTimestamp().value()) << "\n";
+
+        // now search in order
         fileManager->get(key);
     }
 
