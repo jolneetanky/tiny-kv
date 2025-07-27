@@ -12,7 +12,7 @@
 // just a struct for now
 class SSTableFileManagerImpl : public SSTableFileManager {
     private:
-        std::unique_ptr<SSTableFile> m_ssTableFile;
+        std::unique_ptr<SSTableFile> m_ssTableFile; // so we can do things in-memory
 
         std::string m_directoryPath;
         std::string m_fname;
@@ -24,12 +24,15 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         bool writeBinaryToFile(const std::string& path, const std::string& data);
         bool readBinaryFromFile(const std::string& filename, std::string& outData) const;
         SSTableFile::TimestampType getTimeNow(); // helper to get current timestamp
-        std::optional<SSTableFile> read(std::string file) const;
+        std::optional<SSTableFile> decode(std::string file) const;
+
+        // reads the actual file and stores content in `m_ssTableFile`
+        std::optional<Error> readToMemory();
 
     public:
         SSTableFileManagerImpl(std::string directoryPath);
         std::optional<Error> write(std::vector<const Entry*> entryPtrs) override;
-        std::optional<Entry> get(const std::string& key) const override; // searches for a key
+        std::optional<Entry> get(const std::string& key) override; // searches for a key
         std::optional<SSTableFile::TimestampType> getTimestamp() const override;
 };
 

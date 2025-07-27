@@ -14,6 +14,8 @@ class SSTableManagerImpl : public SSTableManager {
 
         // unique_ptr => ensures there is exactly one owner of the object at any time
         // destroyed once the object goes out of scope
+        
+        // this acts as an in-memroy index for us to access a certain file. I will refine later
         std::vector<std::unique_ptr<SSTableFileManager>> m_ssTableFileManagers; // brute force, these guys represent files on level 0 for now
 
         std::vector<SSTableFileManager*> getFilesFromDirectory(const std::string &dirName);
@@ -32,6 +34,8 @@ class SSTableManagerImpl : public SSTableManager {
         std::optional<Error> write(std::vector<const Entry*> entries) override;
 
         // Looks for a key on disk and returns the corresponding Entry (if any).
+        // Waht this does is looks level by level
+        // Scans through files on each level and searches for the key
         std::optional<Entry> get(const std::string& key) override;
 };
 

@@ -148,7 +148,7 @@ SSTableFile::TimestampType SSTableFileManagerImpl::getTimeNow() {
 
 
 // gets entries from a particular SSTable and parses into an SSTableFile
-std::optional<SSTableFile> SSTableFileManagerImpl::read(std::string file) const {
+std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) const {
     // read binary from file and store in a string buffer
     std::cout << "[SSTableFileManager.read()]" << std::endl;
     std::string serializedData;
@@ -186,6 +186,22 @@ std::optional<SSTableFile> SSTableFileManagerImpl::read(std::string file) const 
 
     std::cout << "[SSTableFileManager.read()] Successfully read" "\n";
     return SSTableFile{ entries, timestamp };
+};
+
+
+std::optional<Error> SSTableFileManagerImpl::readToMemory() {
+    std::cout << "SSTableFileManagerImpl.readToMemory()" << "\n";
+
+    if (!m_ssTableFile) {
+        std::optional<SSTableFile> ssTableFileOpt { decode(m_fullPath) };
+        if (!ssTableFileOpt) {
+            std::cerr << "SSTableFileManagerImpl.readToMemory() Failed to read file to memory" << "\n";
+            return Error{"Failed to read file to memory"};
+        }
+
+        m_ssTableFile = std::make_unique<SSTableFile>(ssTableFileOpt->entries, ssTableFileOpt->timestamp);
+    }
+    return std::nullopt;
 };
 
 std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> entryPtrs) {
@@ -227,12 +243,49 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
     return std::nullopt;
 };
 
-std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) const {
+// returns the first entry found - tombstone or not.
+// else sometimes the (most recent) entry has been found and it's tombstoned,
+// but because we tell the caller not found, they continue searching in the other files.
+std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     std::cout << "[SSTableFileManagerImpl.get()]" << "\n";
-    std::string fullPath {m_fullPath};
 
-    read(fullPath);
+    if (!m_ssTableFile) {
+        readToMemory();
+    }
 
+    const std::vector<Entry> &entries = m_ssTableFile->entries;
+
+    for (auto &entry : entries) {
+        std::cout << "[SSTableFileManagerImpl.get()] (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")" << "\n";
+    }
+
+    // binary search :)
+    int l = 0;
+    int r = entries.size() - 1;
+
+    // assume within an SSTable there are no duplicate keys.
+    while (l < r) {
+        int mid = l + ((r - l) / 2);
+        const Entry& midEntry = entries[mid];
+
+        if (midEntry.key == key) {
+            std::cout << "[SSTableFileManagerImpl.get()] FOUND: " << "\n";
+            return midEntry;
+        }
+
+        if (key < midEntry.key) {
+            r = mid - 1;
+        } else {
+            l = mid + 1;
+        }
+    }
+
+    if (entries[l].key == key) {
+        std::cout << "[SSTableFileManagerImpl.get()] FOUND" << "\n";
+        return entries[l];
+    }
+
+    std::cout << "[SSTableFileManagerImpl.get()] NOT FOUND" << "\n";
     return std::nullopt;
 };
 

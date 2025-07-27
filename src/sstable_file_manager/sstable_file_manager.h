@@ -9,7 +9,7 @@
 class SSTableFileManager {
     public:
         virtual std::optional<Error> write(std::vector<const Entry*> entryPts) = 0;
-        virtual std::optional<Entry> get(const std::string& key) const = 0; // searches for a key
+        virtual std::optional<Entry> get(const std::string& key) = 0; // searches for a key
         virtual std::optional<SSTableFile::TimestampType> getTimestamp() const = 0;
         virtual ~SSTableFileManager() = default;
 };

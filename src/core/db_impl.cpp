@@ -27,7 +27,7 @@ std::string DbImpl::get(std::string key) const
         optEntry = m_ssTableManager.get(key);
 
         if (!optEntry) {
-            std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist in memtable." << "\n";
+            std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
             return "";
         }
     }

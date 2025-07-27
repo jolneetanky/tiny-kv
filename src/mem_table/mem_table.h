@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <optional>
-#include "../disk_manager/disk_manager.h"
 #include "../types/error.h"
 #include "../types/entry.h"
 

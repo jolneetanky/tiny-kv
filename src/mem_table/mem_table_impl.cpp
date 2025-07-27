@@ -47,7 +47,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key) {
     std::cout << "[MemTableImpl.del()]" << std::endl;
 
     // TODO: check that entry is either in memtable OR in disk
-    if (!get(key)) {
+    if (!get(key) && !m_ssTableManager.get(key)) {
         std::cout << "[MemTableImpl.del()] Cannot DELETE: key does not exist" << std::endl;
         return Error { "Cannot DELETE: key does not exist"};
     }
