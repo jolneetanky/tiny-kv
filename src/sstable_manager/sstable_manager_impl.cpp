@@ -1,9 +1,13 @@
 #include "sstable_manager_impl.h"
+#include "../level_manager/level_manager_impl.h"
 #include "../sstable_file_manager/sstable_file_manager_impl.h"
 #include <string>
 #include <iostream>
+#include <filesystem>
+#include <algorithm>
+#include <regex>
 
-std::vector<SSTableFileManager*> SSTableManagerImpl::getFilesFromDirectory(const std::string &dirName) {
+std::vector<SSTableFileManager*> SSTableManagerImpl::getFilesFromLevel(int level) {
     std::vector<SSTableFileManager*> files;
     for (auto& uptr : m_ssTableFileManagers) {
         files.push_back(uptr.get());
@@ -12,7 +16,7 @@ std::vector<SSTableFileManager*> SSTableManagerImpl::getFilesFromDirectory(const
 }
 
 // write all entries into a file (serialize each entry)
-std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries) {
+std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries, int level) {
     std::cout << "[SSTableManagerImpl.write()]" << std::endl;
 
     m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(LEVEL_0_DIRECTORY));
@@ -35,7 +39,7 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
 
     // LOCK DIRECTORY ()
     // NOTE: this is a copy of pointers, modifying it in-place wont change the order of ptrs in ssTablefileManagers
-    std::vector<SSTableFileManager*> level0Files { getFilesFromDirectory(LEVEL_0_DIRECTORY)}; // makes a copy
+    std::vector<SSTableFileManager*> level0Files { getFilesFromLevel(0)}; // makes a copy
 
     std::sort(level0Files.begin(), level0Files.end(),
         [](const SSTableFileManager* a, const SSTableFileManager* b) {
@@ -75,6 +79,49 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
     }
 
     std::cout << "[SSTableManager.get()] key does nto exist on disk" << "\n";
+
+    return std::nullopt;
+}
+
+// for every directory in "./sstables/"
+// in ascending order of file name (because name of each level folder will be like l`level-0, level-1`, etc)
+// i need to create a new FileManager
+// and push it into m_levels, of type `std::vector<std::unique_ptr<LevelManager>>`
+std::optional<Error> SSTableManagerImpl::initLevels() {
+    std::cout << "[SSTableManagerImpl::initLevels()]" << "\n";
+
+    const std::string basePath = BASE_PATH;
+    std::vector<std::pair<int, std::filesystem::path>> levelDirs;
+
+    // Step 1: iterate through the base directory
+    for (const auto& entry : std::filesystem::directory_iterator(basePath)) {
+        if (!entry.is_directory()) continue;
+
+        std::string folderName = entry.path().filename().string();
+
+        std::smatch match;
+        std::regex pattern(R"(level-(\d+))");
+
+        if (std::regex_match(folderName, match, pattern)) {
+            int levelNum = std::stoi(match[1].str());
+            levelDirs.emplace_back(levelNum, entry.path());
+        }
+    }
+
+    // Step 2: sort by level number
+    std::sort(levelDirs.begin(), levelDirs.end());
+
+    // Step 3: create LevelManager and push to m_levels
+    for (const auto &[levelNum, path] : levelDirs) {
+        std::cout << "[SSTableManagerImpl::initLevels()]" << path << "\n";
+        auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string());
+        m_levels.push_back(std::move(level));
+    }
+
+    for (const auto &level : m_levels) {
+       std::cout << "HI" << "\n";
+    }
+
 
     return std::nullopt;
 }

@@ -34,7 +34,7 @@ std::optional<Entry> MemTableImpl::get(const std::string &key) const {
 
     std::optional<Entry> optEntry {m_skiplist.get(key)};
 
-    if (!optEntry || optEntry.value().tombstone) {
+    if (!optEntry ) {
         std::cout << "[MemTableImpl.get()] key does not exist in memtable" << "\n";
         return std::nullopt;
     }
@@ -112,7 +112,7 @@ std::optional<Error> MemTableImpl::flushToDisk() {
     }
 
     // write to file
-    std::optional<Error> errOpt { m_ssTableManager.write(entryPtrs) }; // writes a new file to level 0.
+    std::optional<Error> errOpt { m_ssTableManager.write(entryPtrs, 0) }; // writes a new file to level 0.
 
     if (errOpt) {
         std::cout << "[MemTableImpl.flushToDisk()] ERROR: " << errOpt->error << "\n";

@@ -5,6 +5,7 @@
 #include <vector>
 #include "../types/entry.h"
 #include "../types/error.h"
+#include "../types/sstable_file.h"
 
 class SSTableFileManager {
     public:

@@ -12,9 +12,10 @@ std::optional<Entry> SkipListImpl::get(const std::string& key) const {
 
     if (it != m_map.end()) {
         Entry entry{it->second}; // destroyed once this function returns
-        if (entry.tombstone == false) {
-            return it->second;
-        }
+        return it->second;
+        // if (entry.tombstone == false) {
+        //     return it->second;
+        // }
     }
 
     return std::nullopt;

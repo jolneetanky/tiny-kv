@@ -23,6 +23,11 @@ std::string DbImpl::get(std::string key) const
 {
     std::optional<Entry> optEntry {m_memtable.get(key)};
 
+    if (optEntry && optEntry->tombstone) {
+        std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+        return "";
+    }
+
     if (!optEntry) {
         optEntry = m_ssTableManager.get(key);
 
