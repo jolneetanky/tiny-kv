@@ -14,9 +14,9 @@
 class SSTableManagerImpl : public SSTableManager {
     private:
         int MAX_LEVEL = 2; // hardcoded for now        
-        std::string BASE_PATH = "./sstables/";
+        std::string BASE_PATH = "./sstables";
 
-        std::vector<std::unique_ptr<LevelManager>> m_levels;
+        std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 
         std::string LEVEL_0_DIRECTORY { "./sstables/level-0/"};
 

@@ -12,6 +12,7 @@
 // just a struct for now
 class SSTableFileManagerImpl : public SSTableFileManager {
     private:
+        // Stores an in-memory representation of the SSTableFile.
         std::unique_ptr<SSTableFile> m_ssTableFile; // so we can do things in-memory
 
         std::string m_directoryPath;
@@ -27,7 +28,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<SSTableFile> decode(std::string file) const;
 
         // reads the actual file and stores content in `m_ssTableFile`
-        std::optional<Error> readToMemory();
+        std::optional<Error> readFileToMemory();
 
     public:
         SSTableFileManagerImpl(std::string directoryPath);

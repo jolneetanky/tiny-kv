@@ -150,11 +150,11 @@ SSTableFile::TimestampType SSTableFileManagerImpl::getTimeNow() {
 // gets entries from a particular SSTable and parses into an SSTableFile
 std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) const {
     // read binary from file and store in a string buffer
-    std::cout << "[SSTableFileManager.read()]" << std::endl;
-    std::string serializedData;
+    std::cout << "[SSTableFileManager.decode()]" << std::endl;
+    std::string serializedData; //stores the binary. `readBinaryFromFile` will modify this item
 
     if (!readBinaryFromFile(file, serializedData)) {
-        std::cerr << "[SSTableFileManager.read()] Failed to read binary from file" << std::endl;
+        std::cerr << "[SSTableFileManager.decode()] Failed to read binary from file" << std::endl;
         return std::nullopt;
     }
 
@@ -189,13 +189,13 @@ std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) cons
 };
 
 
-std::optional<Error> SSTableFileManagerImpl::readToMemory() {
-    std::cout << "SSTableFileManagerImpl.readToMemory()" << "\n";
+std::optional<Error> SSTableFileManagerImpl::readFileToMemory() {
+    std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
 
     if (!m_ssTableFile) {
         std::optional<SSTableFile> ssTableFileOpt { decode(m_fullPath) };
         if (!ssTableFileOpt) {
-            std::cerr << "SSTableFileManagerImpl.readToMemory() Failed to read file to memory" << "\n";
+            std::cerr << "SSTableFileManagerImpl.readFileToMemory() Failed to read file to memory" << "\n";
             return Error{"Failed to read file to memory"};
         }
 
@@ -210,7 +210,7 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
 
     SSTableFile::TimestampType timestamp { getTimeNow() };
     std::string fname { "table-" + std::to_string(timestamp) };
-    std::string fullPath { m_directoryPath + fname };
+    std::string fullPath { m_directoryPath + "/" + fname };
     m_fullPath = fullPath;
     m_fname = fname;
 
@@ -250,7 +250,11 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     std::cout << "[SSTableFileManagerImpl.get()]" << "\n";
 
     if (!m_ssTableFile) {
-        readToMemory();
+        std::optional<Error> err { readFileToMemory() };
+        if (err) {
+            std::cerr << "[SSTableFileManagerImpl.get()] Failed to read file to memory: " << err->error << "\n";
+            return std::nullopt;
+        }
     }
 
     const std::vector<Entry> &entries = m_ssTableFile->entries;

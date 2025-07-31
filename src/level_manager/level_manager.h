@@ -9,6 +9,9 @@
 class LevelManager {
 
     public:
+        virtual const int & getLevel() = 0;
+        // writes each entry in order of their appearance in `entries`.
+        // also, if the folder's directory has not yet been created, it will create that folder.
         virtual std::optional<Error> writeFile(std::vector<const Entry*> entries) = 0;
         virtual std::optional<Entry> searchKey(const std::string &key) = 0;
         virtual std::optional<const SSTableFileManager*> getFiles() = 0;

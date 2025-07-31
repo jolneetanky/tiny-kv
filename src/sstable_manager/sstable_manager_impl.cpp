@@ -19,16 +19,29 @@ std::vector<SSTableFileManager*> SSTableManagerImpl::getFilesFromLevel(int level
 std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries, int level) {
     std::cout << "[SSTableManagerImpl.write()]" << std::endl;
 
-    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(LEVEL_0_DIRECTORY));
+    if (m_levelManagers.size() == 0) {
+        initLevels();
+    }
 
-    // Get a reference to the newly added manager
-    SSTableFileManager* newManager = m_ssTableFileManagers.back().get();
-    
-    std::optional<Error> errOpt { newManager->write(entries) };
+    auto& level0Manager { m_levelManagers[0] };
+
+    // we can just write as it is because the memtable entries are sorted.
+    std::optional<Error> errOpt { level0Manager->writeFile(entries) };
     if (errOpt) {
-        std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable";
+        std::cerr << "[SSTableManagerImpl.write()] Failed to write SSTable" << std::endl;
         return errOpt;
     }
+        
+    // m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(LEVEL_0_DIRECTORY));
+
+    // Get a reference to the newly added manager
+    // SSTableFileManager* newManager = m_ssTableFileManagers.back().get();
+    
+    // std::optional<Error> errOpt { newManager->write(entries) };
+    // if (errOpt) {
+    //     std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable";
+    //     return errOpt;
+    // }
 
     return std::nullopt;
 
@@ -90,10 +103,22 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
 std::optional<Error> SSTableManagerImpl::initLevels() {
     std::cout << "[SSTableManagerImpl::initLevels()]" << "\n";
 
-    const std::string basePath = BASE_PATH;
+    const std::string &basePath = BASE_PATH;
+    const std::string &level0Path = basePath + "/level-0";
     std::vector<std::pair<int, std::filesystem::path>> levelDirs;
 
+    // create directory ./sstables/level-0 if it does not alr exist
+    try {
+        if (std::filesystem::create_directories(level0Path)) {
+            std::cout << "[SSTableManagerImpl::initLevels()] Successfully created directory " << level0Path << "\n";
+        }
+    } catch (const std::filesystem::filesystem_error &e) {
+        std::cerr << "[SSTableManagerImpl::initLevels()] Error creating directories: " << e.what() << "\n";
+        return Error{ "Failed to create directory" + level0Path };
+    }
+
     // Step 1: iterate through the base directory
+    // add folders that match the pattern `level-<x>` into `levelDirs`
     for (const auto& entry : std::filesystem::directory_iterator(basePath)) {
         if (!entry.is_directory()) continue;
 
@@ -113,15 +138,14 @@ std::optional<Error> SSTableManagerImpl::initLevels() {
 
     // Step 3: create LevelManager and push to m_levels
     for (const auto &[levelNum, path] : levelDirs) {
-        std::cout << "[SSTableManagerImpl::initLevels()]" << path << "\n";
+        std::cout << "[SSTableManagerImpl::initLevels()]" << path.string() << "\n";
         auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string());
-        m_levels.push_back(std::move(level));
+        m_levelManagers.push_back(std::move(level));
     }
 
-    for (const auto &level : m_levels) {
+    for (const auto &level : m_levelManagers) {
        std::cout << "HI" << "\n";
     }
-
 
     return std::nullopt;
 }
