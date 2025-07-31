@@ -23,6 +23,53 @@ std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry*> entri
 
     return std::nullopt;
 };
-std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {};
+
+std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
+    std::cout << "[LevelManagerImpl.searchKey()]" << "\n";
+
+    // only need sort if level 0 
+    if (m_levelNum == 0) {
+        std::sort(m_ssTableFileManagers.begin(), m_ssTableFileManagers.end(),
+            [](const std::unique_ptr<SSTableFileManager> &a, const std::unique_ptr<SSTableFileManager> &b) {
+                auto ta = a->getTimestamp();
+                auto tb = b->getTimestamp();
+
+                // If both have timestamp, compare their values
+                // Newer timestamps (with larger values) come first
+                if (ta && tb) {
+                    return ta.value() > tb.value();
+                }
+
+                // If only a has timestamp, it is older 
+                if (ta && !tb) return true;
+
+                // If only b has timestamp, it should come after a
+                if (!ta && tb) return false;
+
+                // If neither has timestamp, consider equal
+                return false;
+            }
+        );
+    }
+
+    for (const auto& fileManager : m_ssTableFileManagers) {
+        // now search in order
+        // if key not found, move on to next file
+        std::optional<Entry> entryOpt { fileManager->get(key) };
+        if (entryOpt && !entryOpt->tombstone) {
+            std::cout << "[LevelManagerImpl.searchKey()] FOUND" << "\n";
+            return entryOpt;
+        } 
+
+        // in the latest entry, key has been deleted. So can stop searching alr
+        if (entryOpt && entryOpt->tombstone) {
+            break;
+        }
+    }
+
+    std::cout << "[LevelManagerImpl.searchKey()] key does not exist on disk" << "\n";
+    return std::nullopt;
+};
+
 std::optional<const SSTableFileManager*> LevelManagerImpl::getFiles() {};
 std::optional<Error> LevelManagerImpl::deleteFiles(const SSTableFileManager*) {};
