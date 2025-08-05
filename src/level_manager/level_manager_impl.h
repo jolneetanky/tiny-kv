@@ -16,6 +16,7 @@ class LevelManagerImpl : public LevelManager {
     public:
         LevelManagerImpl(int levelNum, std::string directoryPath);
         const int & getLevel() override;
+        // writes a new file
         std::optional<Error> writeFile(std::vector<const Entry*> entries) override;
         std::optional<Entry> searchKey(const std::string &key) override;
         std::optional<const SSTableFileManager*> getFiles() override;

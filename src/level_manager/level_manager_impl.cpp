@@ -7,6 +7,7 @@ LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath) : m_
 const int &LevelManagerImpl::getLevel() {
     return m_levelNum;
 }
+
 std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry*> entries) {
     std::cout << "[LevelManagerImpl.writeFile()]" << "\n";
 

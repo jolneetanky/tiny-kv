@@ -7,14 +7,6 @@
 #include <algorithm>
 #include <regex>
 
-std::vector<SSTableFileManager*> SSTableManagerImpl::getFilesFromLevel(int level) {
-    std::vector<SSTableFileManager*> files;
-    for (auto& uptr : m_ssTableFileManagers) {
-        files.push_back(uptr.get());
-    }
-    return files;
-}
-
 // write all entries into a file (serialize each entry)
 std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries, int level) {
     std::cout << "[SSTableManagerImpl.write()]" << std::endl;
@@ -93,6 +85,7 @@ std::optional<Error> SSTableManagerImpl::initLevels() {
     std::sort(levelDirs.begin(), levelDirs.end());
 
     // Step 3: create LevelManager and push to m_levels
+    // Place in index corresponding to level number
     for (const auto &[levelNum, path] : levelDirs) {
         std::cout << "[SSTableManagerImpl::initLevels()]" << path.string() << "\n";
         auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string());

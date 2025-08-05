@@ -18,22 +18,12 @@ class SSTableManagerImpl : public SSTableManager {
 
         std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 
-        std::string LEVEL_0_DIRECTORY { "./sstables/level-0/"};
-
-        // unique_ptr => ensures there is exactly one owner of the object at any time
-        // destroyed once the object goes out of scope
-        
-        // this acts as an in-memroy index for us to access a certain file. I will refine later
-        // this is how it looks like in a level
-        std::vector<std::unique_ptr<SSTableFileManager>> m_ssTableFileManagers; // brute force, these guys represent files on level 0 for now
-
-        std::vector<SSTableFileManager*> getFilesFromLevel(int level);
-
     public:
         std::optional<Error> write(std::vector<const Entry*> entries, int level) override;
 
         std::optional<Entry> get(const std::string& key) override;
 
+        // initializes the level managers based on existing folders on disk. Creates level  0 file manager if there's nothing
         std::optional<Error> initLevels(); 
 };
 
