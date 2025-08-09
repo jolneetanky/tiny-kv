@@ -38,7 +38,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<Error> write(std::vector<const Entry*> entryPtrs) override;
         std::optional<Entry> get(const std::string& key) override; // searches for a key
         std::optional<Error> init() override; // allow caller to initialize. If caller doens't initialize, we will just lazy initialize on `get`.
-        std::optional<SSTableFile::TimestampType> getTimestamp() const override;
+        std::optional<SSTableFile::TimestampType> getTimestamp() override;
 };
 
 #endif

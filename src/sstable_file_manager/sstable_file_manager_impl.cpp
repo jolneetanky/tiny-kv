@@ -297,10 +297,12 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     return std::nullopt;
 };
 
-std::optional<SSTableFile::TimestampType> SSTableFileManagerImpl::getTimestamp() const {
-    std::cout << "[SSTableFileManagerImpl.getTimestamp()]" << "\n";
+std::optional<SSTableFile::TimestampType> SSTableFileManagerImpl::getTimestamp() {
     if (!m_initialized) {
-        return std::nullopt;
+        if (const auto &err = init()) {
+            std::cout << "[SSTableFileManagerImpl.getTimestamp()] Failed to get timestamp: " << err->error << "\n";
+            return std::nullopt;
+        }
     }
     return m_ssTableFile->timestamp;
 };
@@ -310,6 +312,7 @@ std::optional<Error> SSTableFileManagerImpl::init() {
     std::cout << "[SSTableFileManagerImpl.init()]" << "\n";
     
     if (const auto &err = _readFileToMemory()) {
+        std::cout << "[SSTableFileManagerImpl.init()] Failed to initialize file" << "\n";
         return err;
     }
 
