@@ -6,9 +6,10 @@
 #include <fstream>
 
 SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath) : m_directoryPath{directoryPath} {};
+SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName} {};
 
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
-std::string SSTableFileManagerImpl::serializeEntry(const Entry &entry) const {
+std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const {
     std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
 
     std::string out;
@@ -40,7 +41,7 @@ std::string SSTableFileManagerImpl::serializeEntry(const Entry &entry) const {
 // deserialized the serialized binary string
 // data: pointer to a `char` array which we are deserializing. Ie `data` is the base address of some char array
 // `size`: size of data we are deserializing
-std::optional<Entry> SSTableFileManagerImpl::deserializeEntry(const char* data, size_t size, size_t& bytesRead) const {
+std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char* data, size_t size, size_t& bytesRead) const {
     Entry entry;
     size_t pos = 0;
 
@@ -100,7 +101,7 @@ std::optional<Entry> SSTableFileManagerImpl::deserializeEntry(const char* data, 
 }
 
 // Writes the entire content of a binary string to a file
-bool SSTableFileManagerImpl::writeBinaryToFile(const std::string& path, const std::string& data) {
+bool SSTableFileManagerImpl::_writeBinaryToFile(const std::string& path, const std::string& data) {
     // create parent directories in path if needed
     std::filesystem::path fsPath{path};
     std::filesystem::create_directories(fsPath.parent_path());
@@ -115,7 +116,7 @@ bool SSTableFileManagerImpl::writeBinaryToFile(const std::string& path, const st
 }
 
 // Reads entire binary file into a string buffer
-bool SSTableFileManagerImpl::readBinaryFromFile(const std::string& filename, std::string& outData) const {
+bool SSTableFileManagerImpl::_readBinaryFromFile(const std::string& filename, std::string& outData) const {
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile) {
         std::cerr << "Failed to open file for reading: " << filename << "\n";
@@ -137,7 +138,7 @@ bool SSTableFileManagerImpl::readBinaryFromFile(const std::string& filename, std
     return true;
 }
 
-SSTableFile::TimestampType SSTableFileManagerImpl::getTimeNow() {
+SSTableFile::TimestampType SSTableFileManagerImpl::_getTimeNow() {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()
@@ -148,12 +149,12 @@ SSTableFile::TimestampType SSTableFileManagerImpl::getTimeNow() {
 
 
 // gets entries from a particular SSTable and parses into an SSTableFile
-std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) const {
+std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) const {
     // read binary from file and store in a string buffer
     std::cout << "[SSTableFileManager.decode()]" << std::endl;
     std::string serializedData; //stores the binary. `readBinaryFromFile` will modify this item
 
-    if (!readBinaryFromFile(file, serializedData)) {
+    if (!_readBinaryFromFile(file, serializedData)) {
         std::cerr << "[SSTableFileManager.decode()] Failed to read binary from file" << std::endl;
         return std::nullopt;
     }
@@ -172,7 +173,7 @@ std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) cons
 
     while (offset < serializedEntriesSize) {
         const char *data { serializedData.data() };
-        std::optional<Entry> optEntry { deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead)};
+        std::optional<Entry> optEntry { _deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead)};
 
         if (!optEntry) {
             return std::nullopt;
@@ -189,11 +190,11 @@ std::optional<SSTableFile> SSTableFileManagerImpl::decode(std::string file) cons
 };
 
 
-std::optional<Error> SSTableFileManagerImpl::readFileToMemory() {
+std::optional<Error> SSTableFileManagerImpl::_readFileToMemory() {
     std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
 
     if (!m_ssTableFile) {
-        std::optional<SSTableFile> ssTableFileOpt { decode(m_fullPath) };
+        std::optional<SSTableFile> ssTableFileOpt { _decode(m_fullPath) };
         if (!ssTableFileOpt) {
             std::cerr << "SSTableFileManagerImpl.readFileToMemory() Failed to read file to memory" << "\n";
             return Error{"Failed to read file to memory"};
@@ -204,11 +205,12 @@ std::optional<Error> SSTableFileManagerImpl::readFileToMemory() {
     return std::nullopt;
 };
 
+// NOTE: this impl will overwrite existing `m_fname` and `m_fullPath` if those have alr been initialized.
 std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> entryPtrs) {
 
     std::cout << "[SSTableFileManager.write()]" << std::endl;
 
-    SSTableFile::TimestampType timestamp { getTimeNow() };
+    SSTableFile::TimestampType timestamp { _getTimeNow() };
     std::string fname { "table-" + std::to_string(timestamp) };
     std::string fullPath { m_directoryPath + "/" + fname };
     m_fullPath = fullPath;
@@ -225,19 +227,20 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
         }
 
         entries.push_back(*entryPtr); // copied into vector
-        writeData += serializeEntry(*entryPtr);
+        writeData += _serializeEntry(*entryPtr);
     }
 
-    m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not reference
 
     writeData.append(reinterpret_cast<const char*>(&timestamp), sizeof(timestamp));
 
     std::cout << "[SSTableFileManager.write()]" << writeData << std::endl;
-    if (!writeBinaryToFile(fullPath, writeData)) {
+    if (!_writeBinaryToFile(fullPath, writeData)) {
         std::cerr << "[SSTableFileManager.write()] Failed to write to SSTable";
         return Error{ "Failed to write to SSTable"};
     }
 
+    m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not reference
+    m_initialized = true;
 
     std::cout << "[SSTableFileManager.write()] Successfully WRITE SSTable to path " << fullPath << "\n";
     return std::nullopt;
@@ -249,8 +252,9 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
 std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     std::cout << "[SSTableFileManagerImpl.get()]" << "\n";
 
-    if (!m_ssTableFile) {
-        std::optional<Error> err { readFileToMemory() };
+    // initialize if needed
+    if (!m_initialized) {
+        std::optional<Error> err { init() };
         if (err) {
             std::cerr << "[SSTableFileManagerImpl.get()] Failed to read file to memory: " << err->error << "\n";
             return std::nullopt;
@@ -294,8 +298,22 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
 };
 
 std::optional<SSTableFile::TimestampType> SSTableFileManagerImpl::getTimestamp() const {
-    if (!m_ssTableFile) {
+    std::cout << "[SSTableFileManagerImpl.getTimestamp()]" << "\n";
+    if (!m_initialized) {
         return std::nullopt;
     }
     return m_ssTableFile->timestamp;
+};
+
+
+std::optional<Error> SSTableFileManagerImpl::init() {
+    std::cout << "[SSTableFileManagerImpl.init()]" << "\n";
+    
+    if (const auto &err = _readFileToMemory()) {
+        return err;
+    }
+
+    m_initialized = true;
+
+    return std::nullopt;
 };

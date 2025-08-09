@@ -1,6 +1,7 @@
 #include "level_manager_impl.h"
 #include "../sstable_file_manager/sstable_file_manager_impl.h"
 #include <iostream>
+#include <filesystem>
 
 LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath) : m_levelNum { levelNum }, m_directoryPath { directoryPath } {};
 
@@ -28,7 +29,8 @@ std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry*> entri
 std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
     std::cout << "[LevelManagerImpl.searchKey()]" << "\n";
 
-    // only need sort if level 0 
+    // only need sort if level 0 (other levels don't have overlapping key ranges so it's ok)
+    // sort by timestamp -> search L0 SSTables from newest to oldest
     if (m_levelNum == 0) {
         std::sort(m_ssTableFileManagers.begin(), m_ssTableFileManagers.end(),
             [](const std::unique_ptr<SSTableFileManager> &a, const std::unique_ptr<SSTableFileManager> &b) {
@@ -74,3 +76,23 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
 
 std::optional<const SSTableFileManager*> LevelManagerImpl::getFiles() {};
 std::optional<Error> LevelManagerImpl::deleteFiles(const SSTableFileManager*) {};
+
+
+std::optional<Error> LevelManagerImpl::init() {
+    std::cout << "[LevelManagerImpl.init()]" << "\n";
+
+    for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath}) {
+        const std::string &fileName = dirEntry.path().filename().string();
+        auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName);
+        
+        if (const auto &err = fileManager->init()) {
+            return err;
+        }
+
+        m_ssTableFileManagers.push_back(std::move(fileManager));
+    }
+
+    return std::nullopt;
+ // scans through `m_directoryPath`
+ // if there are any files, create an SSTableFileManager to represent the corresponding file.
+};

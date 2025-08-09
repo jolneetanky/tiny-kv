@@ -19,6 +19,7 @@ class LevelManagerImpl : public LevelManager {
         std::optional<Error> writeFile(std::vector<const Entry*> entries) override;
         std::optional<Entry> searchKey(const std::string &key) override;
         std::optional<const SSTableFileManager*> getFiles() override;
+        std::optional<Error> init() override;
         std::optional<Error> deleteFiles(const SSTableFileManager*) override;
 };
 

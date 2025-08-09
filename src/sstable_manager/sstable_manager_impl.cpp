@@ -48,7 +48,30 @@ std::optional<Error> SSTableManagerImpl::compact() {
     // go 2-by-2, level by level
 
     // CASE #1: LEVEL 0 COMPACTION
-    // 
+    // merge multiple files 
+    
+    // L0: a-g, c-d
+    // L1: a-c, e-h, l-p
+
+    // one-by-one:
+    // L0: c-d
+    // L1: a-h, l-p
+
+    // L0: empty
+    // L1: a-h, l-p 
+
+    // merge overlapping in L0:
+    // L0: a-g
+
+    // n + m
+    // n + (n + m) = 2n + m
+    // ...
+    // kn + m
+
+    // total = (n + m) + (2n + m) + ... + (kn + m)
+    // = n(1 + 2 + ... + k) + km
+    // = O(k^2n + km)
+
     
     // CASE #2: LEVEL N COMPACTION (N > 0)
     // compact level N (N > 0) => pick the oldest SSTable file from level N
@@ -103,11 +126,12 @@ std::optional<Error> SSTableManagerImpl::initLevels() {
     for (const auto &[levelNum, path] : levelDirs) {
         std::cout << "[SSTableManagerImpl::initLevels()]" << path.string() << "\n";
         auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string());
-        m_levelManagers.push_back(std::move(level));
-    }
+        // initialize level with files
+        if (auto err = level->init()) {
+            return err;
+        }
 
-    for (const auto &level : m_levelManagers) {
-       std::cout << "HI" << "\n";
+        m_levelManagers.push_back(std::move(level)); // destroys the local `level` after copying the value
     }
 
     return std::nullopt;

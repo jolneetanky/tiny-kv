@@ -14,6 +14,7 @@ class LevelManager {
         virtual std::optional<Entry> searchKey(const std::string &key) = 0;
         virtual std::optional<const SSTableFileManager*> getFiles() = 0;
         virtual std::optional<Error> deleteFiles(const SSTableFileManager*) = 0;
+        virtual std::optional<Error> init() = 0;
         virtual ~LevelManager() = default;
 };
 
