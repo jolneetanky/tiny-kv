@@ -263,6 +263,10 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
 
     const std::vector<Entry> &entries = m_ssTableFile->entries;
 
+    if (entries.size() == 0) {
+        return std::nullopt;
+    }
+
     for (auto &entry : entries) {
         std::cout << "[SSTableFileManagerImpl.get()] (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")" << "\n";
     }
@@ -329,8 +333,13 @@ std::string SSTableFileManagerImpl::getFullPath() const {
 };
 
 std::optional<std::string> SSTableFileManagerImpl::getStartKey() const {
+    std::cout << "[SSTableFileManager.getStartKey()]" << "\n";
     if (!m_initialized) {
         std::cout << "[SSTableFileManager.getStartKey()] Failed to get start key: file manager not yet initialized" << "\n";
+        return std::nullopt;
+    }
+
+    if (m_ssTableFile->entries.size() == 0) {
         return std::nullopt;
     }
 
@@ -340,6 +349,10 @@ std::optional<std::string> SSTableFileManagerImpl::getStartKey() const {
 std::optional<std::string> SSTableFileManagerImpl::getEndKey() const {
     if (!m_initialized) {
         std::cout << "[SSTableFileManager.getEndKey()] Failed to get start key: file manager not yet initialized" << "\n";
+        return std::nullopt;
+    }
+
+    if (m_ssTableFile->entries.size() == 0) {
         return std::nullopt;
     }
 

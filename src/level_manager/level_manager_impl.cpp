@@ -59,7 +59,7 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
         // now search in order
         // if key not found, move on to next file
         std::optional<Entry> entryOpt { fileManager->get(key) };
-        if (entryOpt && !entryOpt->tombstone) {
+        if (entryOpt) {
             std::cout << "[LevelManagerImpl.searchKey()] FOUND" << "\n";
             return entryOpt;
         } 
@@ -78,10 +78,38 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
 // };
 
 std::pair<LevelManagerImpl::const_iterator, LevelManagerImpl::const_iterator> LevelManagerImpl::getFiles() {
+    std::cout << "LevelManagerImpl.getFiles()]" << "\n";
     return { m_ssTableFileManagers.begin(), m_ssTableFileManagers.end() };
 };
 
-std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFileManager*> files) {};
+std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFileManager*> files) {
+    std::cout << "[LevelManagerImpl.deleteFiles()]" << "\n";
+
+   for (const auto &file : files) {
+    std::string fullPath = file->getFullPath();
+   
+    // 1. Delete file from disk
+    if (!std::filesystem::remove(fullPath)) {
+        return Error{ "Failed to delete file" };
+    }
+
+    // 2. Remove the file from m_fileManagers
+    auto it = std::remove_if(
+        m_ssTableFileManagers.begin(),
+        m_ssTableFileManagers.end(),
+        [&](const std::unique_ptr<SSTableFileManager> &ptr) {
+            // remove if path of file matches that that we are tryna remove
+            return ptr && ptr->getFullPath() == fullPath;
+        }
+    );
+
+    if (it != m_ssTableFileManagers.end()) {
+        m_ssTableFileManagers.erase(it, m_ssTableFileManagers.end());
+    }
+   } 
+
+   return std::nullopt;
+};
 
 
 std::optional<Error> LevelManagerImpl::init() {
