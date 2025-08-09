@@ -12,9 +12,15 @@ class SSTableFileManager {
         virtual std::optional<Error> write(std::vector<const Entry*> entryPts) = 0;
         virtual std::optional<Entry> get(const std::string& key) = 0; // searches for a key
         virtual std::optional<SSTableFile::TimestampType> getTimestamp() = 0;
+        // NOTE: this returns entries in sorted order!!
         virtual std::optional<std::vector<Entry>> getEntries() const = 0;
         virtual std::optional<Error> init() = 0;
         virtual ~SSTableFileManager() = default;
+
+        virtual std::string getFullPath() const = 0;
+
+        virtual std::optional<std::string> getStartKey() const = 0;
+        virtual std::optional<std::string> getEndKey() const = 0;
 };
 
 #endif

@@ -40,6 +40,10 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<std::vector<Entry>> getEntries() const override;
         std::optional<Error> init() override; // allow caller to initialize. If caller doens't initialize, we will just lazy initialize on `get`.
         std::optional<SSTableFile::TimestampType> getTimestamp() override;
+
+        std::string getFullPath() const override;
+        std::optional<std::string> getStartKey() const override;
+        std::optional<std::string> getEndKey() const override;
 };
 
 #endif

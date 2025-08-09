@@ -323,3 +323,26 @@ std::optional<Error> SSTableFileManagerImpl::init() {
 
     return std::nullopt;
 };
+
+
+std::string SSTableFileManagerImpl::getFullPath() const {
+    return m_fullPath;
+};
+
+std::optional<std::string> SSTableFileManagerImpl::getStartKey() const {
+    if (!m_initialized) {
+        std::cout << "[SSTableFileManager.getStartKey()] Failed to get start key: file manager not yet initialized" << "\n";
+        return std::nullopt;
+    }
+
+    return m_ssTableFile->entries[0].key;
+};
+
+std::optional<std::string> SSTableFileManagerImpl::getEndKey() const {
+    if (!m_initialized) {
+        std::cout << "[SSTableFileManager.getEndKey()] Failed to get start key: file manager not yet initialized" << "\n";
+        return std::nullopt;
+    }
+
+    return m_ssTableFile->entries.back().key;
+};

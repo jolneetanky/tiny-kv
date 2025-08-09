@@ -93,7 +93,7 @@ std::optional<Error> LevelManagerImpl::init() {
             if (!std::filesystem::create_directories(m_directoryPath)) {
                 return Error{ "Failed to create directory: " + m_directoryPath };
             }
-            std::cout << "Created directory: " << m_directoryPath << "\n";
+            std::cout << "[LevelManagerImpl.init()] Created directory: " << m_directoryPath << "\n";
         } catch (const std::filesystem::filesystem_error &e) {
             return Error{ std::string("Filesystem error creating directory: ") + e.what() };
         }
