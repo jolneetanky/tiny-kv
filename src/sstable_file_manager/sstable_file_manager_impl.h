@@ -6,6 +6,7 @@
 #include <vector>
 #include "../types/entry.h"
 #include "../types/error.h"
+#include "../types/timestamp.h"
 #include "../types/sstable_file.h"
 #include "sstable_file_manager.h"
 
@@ -24,7 +25,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<Entry> _deserializeEntry(const char* data, size_t size, size_t& bytesRead) const;
         bool _writeBinaryToFile(const std::string& path, const std::string& data);
         bool _readBinaryFromFile(const std::string& filename, std::string& outData) const;
-        SSTableFile::TimestampType _getTimeNow(); // helper to get current timestamp
+        TimestampType _getTimeNow(); // helper to get current timestamp
         std::optional<SSTableFile> _decode(std::string file) const;
 
         // reads the actual file and stores content in `m_ssTableFile`
@@ -39,7 +40,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<Entry> get(const std::string& key) override; // searches for a key
         std::optional<std::vector<Entry>> getEntries() const override;
         std::optional<Error> init() override; // allow caller to initialize. If caller doens't initialize, we will just lazy initialize on `get`.
-        std::optional<SSTableFile::TimestampType> getTimestamp() override;
+        std::optional<TimestampType> getTimestamp() const override;
 
         std::string getFullPath() const override;
         std::optional<std::string> getStartKey() const override;

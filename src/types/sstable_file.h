@@ -3,10 +3,11 @@
 
 #include <vector>
 #include "entry.h"
+#include "timestamp.h"
 
 struct SSTableFile {
     public:
-        using TimestampType = long long;
+        // using TimestampType = long long;
         std::vector<Entry> entries; // all the key-value pairs
         TimestampType timestamp; // time at which this file was written
 

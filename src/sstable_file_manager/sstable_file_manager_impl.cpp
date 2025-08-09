@@ -138,7 +138,7 @@ bool SSTableFileManagerImpl::_readBinaryFromFile(const std::string& filename, st
     return true;
 }
 
-SSTableFile::TimestampType SSTableFileManagerImpl::_getTimeNow() {
+TimestampType SSTableFileManagerImpl::_getTimeNow() {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()
@@ -160,15 +160,15 @@ std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) con
     }
 
     // extract timestamp from the last 8 bytes
-    SSTableFile::TimestampType timestamp;
-    char* timestampSrc = serializedData.data() + serializedData.size() - sizeof(SSTableFile::TimestampType);
+    TimestampType timestamp;
+    char* timestampSrc = serializedData.data() + serializedData.size() - sizeof(TimestampType);
 
-    std::memcpy(&timestamp, timestampSrc, sizeof(SSTableFile::TimestampType));
+    std::memcpy(&timestamp, timestampSrc, sizeof(TimestampType));
 
     //deserialize each entry.
     size_t bytesRead { 0 };
     size_t offset { 0 };
-    size_t serializedEntriesSize { serializedData.size() - sizeof(SSTableFile::TimestampType) };
+    size_t serializedEntriesSize { serializedData.size() - sizeof(TimestampType) };
     std::vector<Entry> entries;
 
     while (offset < serializedEntriesSize) {
@@ -210,7 +210,7 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
 
     std::cout << "[SSTableFileManager.write()]" << std::endl;
 
-    SSTableFile::TimestampType timestamp { _getTimeNow() };
+    TimestampType timestamp { _getTimeNow() };
     std::string fname { "table-" + std::to_string(timestamp) };
     std::string fullPath { m_directoryPath + "/" + fname };
     m_fullPath = fullPath;
@@ -297,13 +297,12 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     return std::nullopt;
 };
 
-std::optional<SSTableFile::TimestampType> SSTableFileManagerImpl::getTimestamp() {
+std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() const {
     if (!m_initialized) {
-        if (const auto &err = init()) {
-            std::cout << "[SSTableFileManagerImpl.getTimestamp()] Failed to get timestamp: " << err->error << "\n";
-            return std::nullopt;
-        }
+        std::cout << "[SSTableFileManagerImpl.getTimestamp()] Failed to get timestamp: FileManager not yet initialized" << "\n";
+        return std::nullopt;
     }
+
     return m_ssTableFile->timestamp;
 };
 

@@ -2,8 +2,11 @@
 #define ENTRY_H
 
 #include <string>
+#include "timestamp.h"
 
 struct Entry {
+    // using TimestampType = long long;
+
     std::string key;
     std::string val;
     bool tombstone = false;

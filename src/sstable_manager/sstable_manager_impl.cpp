@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <algorithm>
 #include <regex>
+#include <unordered_set>
+#include "../types/timestamp.h"
 
 // merge files WITHIN level 0, into SSTables with DISTINCT, NON-OVERLAPPING ranges
 // std::optional<Error> SSTableManagerImpl::_mergeLevel0() {
@@ -27,25 +29,20 @@ std::optional<std::vector<Entry>> merge(std::vector<const Entry*> newEntries, st
 // given a bunch of file managers, groups them based on overlaps
 // sort by start key
 std::vector<std::vector<const SSTableFileManager*>> SSTableManagerImpl::groupL0Overlaps(std::vector<const SSTableFileManager*> fileManagers) const {
+    std::cout << "[SSTableManagerImpl.groupL0Overlaps()]" << "\n";
     std::vector<std::vector<const SSTableFileManager*>> res;
 
     if (fileManagers.size() == 0) {
         return res;
     }
 
-    std::cout << "[SSTableManagerImpl.groupL0Overlaps()]" << "\n";
     // sort by start key
     std::sort(fileManagers.begin(), fileManagers.end(),
         [](const SSTableFileManager* a, const SSTableFileManager* b) {
             return a->getStartKey().value() < b->getStartKey().value();
     });
 
-    for (const auto &fileManager : fileManagers) {
-        std::cout << "[SSTableManagerImpl.groupL0Overlaps] " << fileManager->getStartKey().value() << "\n";
-    }
-
-    // merge into `res`
-
+    // merge into `res
     res.push_back({fileManagers[0]});
     std::string curStart = fileManagers[0]->getStartKey().value(); // the current interval
     std::string curEnd = fileManagers[0]->getEndKey().value();
@@ -77,8 +74,75 @@ std::vector<std::vector<const SSTableFileManager*>> SSTableManagerImpl::groupL0O
     return res;
 };
 
-std::optional<std::vector<Entry>> mergeL0Entries(std::vector<const SSTableFileManager*>) {
-    return std::nullopt;
+// merges L entries from oldest to newest
+// newest entries overwrite older ones
+// tombstoned keys deleted
+
+// TODO: refactor to be more efficient!
+// can ask chatgpt how to do streaming merge like RocksDB.
+std::optional<std::vector<Entry>> mergeL0Entries(std::vector<const SSTableFileManager*> fileManagers) {
+    std::cout << "SSTableManagerImpl.mergeL0Entries()]" << "\n";
+    if (fileManagers.empty()) {
+        return std::nullopt;
+    }
+
+    // 1. sort the SSTableFileManagers by timestamp of each SSTableFile, from newest to oldest
+
+    // descending
+    // sort newest -> oldest
+    // ie. largest timestamp -> smallest timestamp
+    std::sort(fileManagers.begin(), fileManagers.end(),
+        [](const SSTableFileManager* a, const SSTableFileManager* b) {
+            return a->getTimestamp().value_or(0) > b->getTimestamp().value_or(0);
+    });
+
+    // 2. iterate through the sorted file managers. For each entry in a file manager, first check in hashmap keys() if it has already been added to the PQ. If it has, skip it as it has already been overwritten by a newer entry.
+    // std::unordered_set<std::string> seenKeys;
+
+    using HeapNode = std::pair<Entry, TimestampType>; // Entry and index of manager
+    // minheap by key
+    // if 2 nodes have the same key, we want the newer one (with larger timestamp) on top
+    auto compare = [](const HeapNode &a, const HeapNode &b) {
+        if (a.first.key != b.first.key) {
+            return a.first.key > b.first.key;
+        }
+
+        // if same key, sort by timestamp
+        // larger timestamp first
+        return a.second < b.second; 
+    };
+
+    // direct initialization
+    std::priority_queue<HeapNode, std::vector<HeapNode>, decltype(compare)>  pq(compare);
+
+    for (size_t i = 0; i < fileManagers.size(); ++i) {
+        auto entries = fileManagers[i]->getEntries();
+        auto timestamp = fileManagers[i]->getTimestamp();
+        if (!entries || !timestamp) {
+            return std::nullopt;
+        }
+
+        for (const auto &entry : entries.value()) {
+            // add to PQ
+            pq.emplace(entry, timestamp.value());
+        }
+    }
+
+    // 3. since we know our PQ is sorted first by key then by timestamp (for duplicates),
+    // Pop from PQ and add to `res`. While the next top nodes still have same key, pop them but don't add to res. 
+    std::vector<Entry> merged;
+    while (!pq.empty()) {
+        std::string key = pq.top().first.key;
+        merged.push_back(pq.top().first);
+        pq.pop();
+        
+        // pop duplicates
+        while (!pq.empty() && pq.top().first.key == key) {
+            pq.pop();
+        }
+    }
+
+    return merged;
 }
 
 // find files from level N that overlap with `start` and `end`
@@ -115,15 +179,27 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
     std::vector<std::vector<const SSTableFileManager*>> groupedLevel0Files = groupL0Overlaps(level0Files);
 
     for (const auto& group : groupedLevel0Files) {
-        for (const auto &file : group) {
-            std::cout << "HIII " << file->getFullPath() << "\n";
-        }
-        // std::optional<std::vector<Entry>> entries = mergeL0Entries(group);
-
-        // std::vector<const Entry*> entryPtrs;
-        // for (const auto &entry : entries.value()) {
-        //     entryPtrs.push_back(&entry);
+        std::cout << "GROUP" << "\n";
+        // for (const auto &file : group) {
+        //     std::cout << "HIII " << file->getFullPath() << "\n";
         // }
+
+        std::optional<std::vector<Entry>> entries = mergeL0Entries(group);
+
+        if (!entries) {
+            std::string errMsg = "Failed to merge L0 entries";
+            std::cout << "[SSTableFileManager._compactLevel0] " << errMsg << "\n";
+            return Error{ errMsg };
+        }
+
+        for (const auto &entry : entries.value()) {
+            std::cout << "KEY: " << entry.key << ", VAL: " << entry.val << "\n";
+        }
+
+        std::vector<const Entry*> entryPtrs;
+        for (const auto &entry : entries.value()) {
+            entryPtrs.push_back(&entry);
+        }
 
         // std::string startKey = entries.value()[0].key;
         // std::string endKey = entries.value().back().key;

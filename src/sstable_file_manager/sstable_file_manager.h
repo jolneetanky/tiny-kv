@@ -11,7 +11,7 @@ class SSTableFileManager {
     public:
         virtual std::optional<Error> write(std::vector<const Entry*> entryPts) = 0;
         virtual std::optional<Entry> get(const std::string& key) = 0; // searches for a key
-        virtual std::optional<SSTableFile::TimestampType> getTimestamp() = 0;
+        virtual std::optional<TimestampType> getTimestamp() const = 0;
         // NOTE: this returns entries in sorted order!!
         virtual std::optional<std::vector<Entry>> getEntries() const = 0;
         virtual std::optional<Error> init() = 0;
