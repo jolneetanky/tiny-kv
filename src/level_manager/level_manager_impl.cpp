@@ -74,12 +74,30 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
     return std::nullopt;
 };
 
-std::optional<const SSTableFileManager*> LevelManagerImpl::getFiles() {};
-std::optional<Error> LevelManagerImpl::deleteFiles(const SSTableFileManager*) {};
+// std::optional<std::vector<const SSTableFileManager*>> LevelManagerImpl::getFiles() {
+// };
+
+std::pair<LevelManagerImpl::const_iterator, LevelManagerImpl::const_iterator> LevelManagerImpl::getFiles() {
+    return { m_ssTableFileManagers.begin(), m_ssTableFileManagers.end() };
+};
+
+std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFileManager*> files) {};
 
 
 std::optional<Error> LevelManagerImpl::init() {
     std::cout << "[LevelManagerImpl.init()]" << "\n";
+
+    // create directory if it doesn't exist
+    if (!std::filesystem::exists(m_directoryPath)) {
+        try {
+            if (!std::filesystem::create_directories(m_directoryPath)) {
+                return Error{ "Failed to create directory: " + m_directoryPath };
+            }
+            std::cout << "Created directory: " << m_directoryPath << "\n";
+        } catch (const std::filesystem::filesystem_error &e) {
+            return Error{ std::string("Filesystem error creating directory: ") + e.what() };
+        }
+    }
 
     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath}) {
         const std::string &fileName = dirEntry.path().filename().string();

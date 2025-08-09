@@ -307,6 +307,9 @@ std::optional<SSTableFile::TimestampType> SSTableFileManagerImpl::getTimestamp()
     return m_ssTableFile->timestamp;
 };
 
+std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries() const  {
+    return m_ssTableFile->entries;
+};
 
 std::optional<Error> SSTableFileManagerImpl::init() {
     std::cout << "[SSTableFileManagerImpl.init()]" << "\n";

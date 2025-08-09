@@ -18,6 +18,12 @@ class SSTableManagerImpl : public SSTableManager {
 
         std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 
+        std::optional<Error> _compactLevel0();
+        std::optional<Error> _compactLevelN(int n);
+        std::optional<Error> _kWayMerge();
+
+        std::optional<std::vector<const SSTableFileManager*>> _findOverlaps(int level, std::string start, std::string end);
+
     public:
         std::optional<Error> write(std::vector<const Entry*> entries, int level) override;
 
