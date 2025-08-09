@@ -28,7 +28,7 @@ std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry*> entries
 
 };
 
-std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
+std::optional<Entry> SSTableManagerImpl::get(const std::string& key) const {
     std::cout << "[SSTableManagerImpl.get()]" << "\n";
 
     // search all levels
@@ -40,9 +40,23 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) {
         }
     }
 
-    std::cout << "[SSTableManager.get()] key does nto exist on disk" << "\n";
+    std::cout << "[SSTableManager.get()] key does not exist on disk" << "\n";
     return std::nullopt;
 }
+
+std::optional<Error> SSTableManagerImpl::compact() {
+    // go 2-by-2, level by level
+
+    // CASE #1: LEVEL 0 COMPACTION
+    // 
+    
+    // CASE #2: LEVEL N COMPACTION (N > 0)
+    // compact level N (N > 0) => pick the oldest SSTable file from level N
+    // for that file, search for files in N+1 with overlapping key ranges.
+    // merge these files
+    // delete merged files from level N and level N+1
+    // write the new merged file to level N+1 
+};
 
 // for every directory in "./sstables/"
 // in ascending order of file name (because name of each level folder will be like l`level-0, level-1`, etc)

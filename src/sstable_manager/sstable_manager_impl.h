@@ -21,9 +21,11 @@ class SSTableManagerImpl : public SSTableManager {
     public:
         std::optional<Error> write(std::vector<const Entry*> entries, int level) override;
 
-        std::optional<Entry> get(const std::string& key) override;
+        std::optional<Entry> get(const std::string& key) const override;
 
-        // initializes the level managers based on existing folders on disk. Creates level  0 file manager if there's nothing
+        std::optional<Error> compact() override;
+
+        // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
         std::optional<Error> initLevels(); 
 };
 

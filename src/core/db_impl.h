@@ -8,8 +8,8 @@
 class DbImpl : public DB
 {
 private:
-    MemTable &m_memtable;
-    SSTableManager &m_ssTableManager;
+    MemTable &m_memtable; // memory component
+    SSTableManager &m_ssTableManager; // disk component
 
 public:
     DbImpl(MemTable &memTable, SSTableManager &ssTableManager);
