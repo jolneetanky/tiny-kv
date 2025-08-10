@@ -27,7 +27,7 @@ std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry*> entri
 };
 
 std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
-    std::cout << "[LevelManagerImpl.searchKey()]" << "\n";
+    std::cout << "[LevelManagerImpl.searchKey()] LEVEL " << std::to_string(m_levelNum) << "\n";
 
     // only need sort if level 0 (other levels don't have overlapping key ranges so it's ok)
     // sort by timestamp -> search L0 SSTables from newest to oldest

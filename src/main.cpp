@@ -36,7 +36,7 @@ int main()
     // SkipList skiplist;
     SSTableManagerImpl ssTableManagerImpl;
     SkipListImpl skipListImpl;
-    MemTableImpl memTableImpl(5, skipListImpl, ssTableManagerImpl);
+    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl);
     DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
 
     ssTableManagerImpl.initLevels();

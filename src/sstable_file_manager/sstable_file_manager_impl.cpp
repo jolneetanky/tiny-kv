@@ -10,7 +10,7 @@ SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath,
 
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
 std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const {
-    std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
+    // std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
 
     std::string out;
 

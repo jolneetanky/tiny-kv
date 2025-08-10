@@ -10,23 +10,9 @@
 #include <limits>
 #include "../types/timestamp.h"
 
-// merge files WITHIN level 0, into SSTables with DISTINCT, NON-OVERLAPPING ranges
-// std::optional<Error> SSTableManagerImpl::_mergeLevel0() {
-//     // levelManagers[0]->mergeLevel0()
-// };
-
-std::optional<Error> SSTableManagerImpl::_kWayMerge() {
-
-};
-
-// merges `new` into `old`
-// output needs to be sorted
-// overwrites current keys with old keys
-// the ndeletes tombstoned keys
-
 // KEY ASSUMPTION: the files are given in the order whcih we'd like to merge
 // so from leftmost to rightmost is the correct order.
-std::optional<std::vector<Entry>> _mergeEntries(std::vector<const Entry*> entries) {
+std::optional<std::vector<Entry>> SSTableManagerImpl::_mergeEntries(std::vector<const Entry*> entries) const {
     std::cout << "[SSTableManagerImpl._mergeEntries()]" << "\n";
 
     using HeapNode = const Entry*; // Entry and index of manager
@@ -56,15 +42,6 @@ std::optional<std::vector<Entry>> _mergeEntries(std::vector<const Entry*> entrie
         merged.push_back(*pq.top());
         pq.pop();
     }
-
-    // 4. remove tombstones only if we are the second last level.
-    // merged.erase(
-    //     std::remove_if(merged.begin(), merged.end(),
-    //         [](const Entry &entry) {
-    //             return entry.tombstone;
-    //         }),
-    //     merged.end()
-    // );
 
     return merged;
 };
@@ -187,15 +164,6 @@ std::optional<std::vector<Entry>> _mergeL0Entries(std::vector<const SSTableFileM
             pq.pop();
         }
     }
-
-    // 4. remove tombstones
-    // merged.erase(
-    //     std::remove_if(merged.begin(), merged.end(),
-    //         [](const Entry &entry) {
-    //             return entry.tombstone;
-    //         }),
-    //     merged.end()
-    // );
 
     return merged;
 }
@@ -415,6 +383,17 @@ std::optional<Error> SSTableManagerImpl::_compactLevelN(int n) {
 
     if (!mergedEntries) {
         return Error{ "Failed to merge entries of L0 and L1" };
+    }
+
+    // remove tombstones if we are the second last level
+    if (n == MAX_LEVEL - 1) {
+        mergedEntries.value().erase(
+            std::remove_if(mergedEntries.value().begin(), mergedEntries.value().end(),
+                [](const Entry &entry) {
+                    return entry.tombstone;
+                }),
+            mergedEntries.value().end()
+        );
     }
 
     // 5. Write merged entries to a file in level n+1, and delete the merged files
