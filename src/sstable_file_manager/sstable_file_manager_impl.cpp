@@ -253,7 +253,6 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
     }
 
     m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not reference
-    m_initialized = true;
 
     std::cout << "[SSTableFileManager.write()] Successfully WRITE SSTable to path " << fullPath << "\n";
     return std::nullopt;
