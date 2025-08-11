@@ -131,9 +131,9 @@ std::optional<Error> LevelManagerImpl::init() {
         const std::string &fileName = dirEntry.path().filename().string();
         auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName);
         
-        if (const auto &err = fileManager->init()) {
-            return err;
-        }
+        // if (const auto &err = fileManager->init()) {
+        //     return err;
+        // }
 
         m_ssTableFileManagers.push_back(std::move(fileManager));
     }

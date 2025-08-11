@@ -42,7 +42,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<Entry> get(const std::string& key) override; // searches for a key
         
         std::optional<std::vector<Entry>> getEntries() override;
-        std::optional<TimestampType> getTimestamp() const override;
+        std::optional<TimestampType> getTimestamp() override;
         std::string getFullPath() const override;
         std::optional<std::string> getStartKey() const override;
         std::optional<std::string> getEndKey() const override;

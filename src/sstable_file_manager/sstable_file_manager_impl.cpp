@@ -314,10 +314,9 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
     return std::nullopt;
 };
 
-std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() const {
+std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() {
     if (!m_initialized) {
-        std::cout << "[SSTableFileManagerImpl.getTimestamp()] Failed to get timestamp: FileManager not yet initialized" << "\n";
-        return std::nullopt;
+        init();
     }
 
     return m_ssTableFile->timestamp;

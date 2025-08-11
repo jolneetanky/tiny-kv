@@ -154,7 +154,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
         
         // sort `group` by timestamp, from newest to oldest
         std::sort(fileManagers.begin(), fileManagers.end(),
-            [](const SSTableFileManager* a, const SSTableFileManager* b) {
+            [](SSTableFileManager* a, SSTableFileManager* b) {
                 return a->getTimestamp().value_or(0) > b->getTimestamp().value_or(0);
         });
 
