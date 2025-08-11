@@ -130,15 +130,9 @@ std::optional<Error> LevelManagerImpl::init() {
     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath}) {
         const std::string &fileName = dirEntry.path().filename().string();
         auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName);
-        
-        // if (const auto &err = fileManager->init()) {
-        //     return err;
-        // }
 
         m_ssTableFileManagers.push_back(std::move(fileManager));
     }
 
     return std::nullopt;
- // scans through `m_directoryPath`
- // if there are any files, create an SSTableFileManager to represent the corresponding file.
 };

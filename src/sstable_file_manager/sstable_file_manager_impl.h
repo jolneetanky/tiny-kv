@@ -33,6 +33,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         // reads the actual file and stores content in `m_ssTableFile`
         // initializes the in-memory `m_ssTableFile`
         std::optional<Error> _readFileToMemory();
+        std::optional<Error> _init(); // allow caller to initialize. If caller doesn't initialize, we will just lazy initialize on `get`.
 
     public:
         SSTableFileManagerImpl(std::string directoryPath); // if the file doesn't exist yet
@@ -44,12 +45,11 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<std::vector<Entry>> getEntries() override;
         std::optional<TimestampType> getTimestamp() override;
         std::string getFullPath() const override;
-        std::optional<std::string> getStartKey() const override;
-        std::optional<std::string> getEndKey() const override;
+        std::optional<std::string> getStartKey() override;
+        std::optional<std::string> getEndKey() override;
 
         bool contains(std::string key) override; 
 
-        std::optional<Error> init() override; // allow caller to initialize. If caller doesn't initialize, we will just lazy initialize on `get`.
 };
 
 #endif

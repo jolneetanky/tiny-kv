@@ -267,7 +267,7 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
 
     // initialize if needed
     if (!m_initialized) {
-        std::optional<Error> err { init() };
+        std::optional<Error> err { _init() };
         if (err) {
             std::cerr << "[SSTableFileManagerImpl.get()] Failed to read file to memory: " << err->error << "\n";
             return std::nullopt;
@@ -316,7 +316,7 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string& key) {
 
 std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() {
     if (!m_initialized) {
-        init();
+        _init();
     }
 
     return m_ssTableFile->timestamp;
@@ -324,14 +324,14 @@ std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() {
 
 std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries() {
     if (!m_initialized) {
-        init();
+        _init();
     }
 
     return m_ssTableFile->entries;
 };
 
 // reads entries to mmemory. In future this should be hidden.
-std::optional<Error> SSTableFileManagerImpl::init() {
+std::optional<Error> SSTableFileManagerImpl::_init() {
     std::cout << "[SSTableFileManagerImpl.init()]" << "\n";
     
     if (const auto &err = _readFileToMemory()) {
@@ -349,11 +349,11 @@ std::string SSTableFileManagerImpl::getFullPath() const {
     return m_fullPath;
 };
 
-std::optional<std::string> SSTableFileManagerImpl::getStartKey() const {
-    std::cout << "[SSTableFileManager.getStartKey()]" << "\n";
+std::optional<std::string> SSTableFileManagerImpl::getStartKey() {
     if (!m_initialized) {
-        std::cout << "[SSTableFileManager.getStartKey()] Failed to get start key: file manager not yet initialized" << "\n";
-        return std::nullopt;
+        _init(); 
+        // std::cout << "[SSTableFileManager.getStartKey()] Failed to get start key: file manager not yet initialized" << "\n";
+        // return std::nullopt;
     }
 
     if (m_ssTableFile->entries.size() == 0) {
@@ -363,7 +363,7 @@ std::optional<std::string> SSTableFileManagerImpl::getStartKey() const {
     return m_ssTableFile->entries[0].key;
 };
 
-std::optional<std::string> SSTableFileManagerImpl::getEndKey() const {
+std::optional<std::string> SSTableFileManagerImpl::getEndKey() {
     if (!m_initialized) {
         std::cout << "[SSTableFileManager.getEndKey()] Failed to get start key: file manager not yet initialized" << "\n";
         return std::nullopt;

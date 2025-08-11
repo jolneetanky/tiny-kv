@@ -16,12 +16,12 @@ class SSTableFileManager {
         // NOTE: this returns entries in sorted order!!
         virtual std::optional<std::vector<Entry>> getEntries() = 0;
         virtual std::string getFullPath() const = 0;
-        virtual std::optional<std::string> getStartKey() const = 0;
-        virtual std::optional<std::string> getEndKey() const = 0;
+        virtual std::optional<std::string> getStartKey() = 0;
+        virtual std::optional<std::string> getEndKey() = 0;
 
         virtual bool contains(std::string key) = 0; 
 
-        virtual std::optional<Error> init() = 0;
+        // virtual std::optional<Error> init() = 0;
         virtual ~SSTableFileManager() = default;
 };
 

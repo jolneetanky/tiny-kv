@@ -59,7 +59,7 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
 
     // sort by start key
     std::sort(fileManagers.begin(), fileManagers.end(),
-        [](const SSTableFileManager* a, const SSTableFileManager* b) {
+        [](SSTableFileManager* a, SSTableFileManager* b) {
             return a->getStartKey().value() < b->getStartKey().value();
     });
 
