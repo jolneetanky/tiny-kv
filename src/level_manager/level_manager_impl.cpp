@@ -57,6 +57,11 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key) {
 
     for (const auto& fileManager : m_ssTableFileManagers) {
         // now search in order
+        // if key doesn't exist, continue. Else search the SSTable
+        if (!fileManager->contains(key)) {
+            continue;
+        }
+
         // if key not found, move on to next file
         std::optional<Entry> entryOpt { fileManager->get(key) };
         if (entryOpt) {

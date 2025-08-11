@@ -48,6 +48,8 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<std::string> getStartKey() override;
         std::optional<std::string> getEndKey() override;
 
+        // might have false positives. But never false negatives.
+        // ie. if !SSTableFileManagerImpl.comtains*key)`, then the key definitely doesn't exist in SSTable.
         bool contains(std::string key) override; 
 
 };

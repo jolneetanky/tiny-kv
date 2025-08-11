@@ -5,8 +5,8 @@
 #include <arpa/inet.h>
 #include <fstream>
 
-SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath) : m_directoryPath{directoryPath} {};
-SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName} {};
+SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath) : m_directoryPath{ directoryPath }, m_bloomFilter{ BloomFilter(1000, 7) } {};
+SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_bloomFilter{ BloomFilter(1000, 7) } {};
 
 std::string _generateSSTableFileName() {
     static std::atomic<uint64_t> counter{0};
@@ -204,7 +204,7 @@ std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) con
 
 
 std::optional<Error> SSTableFileManagerImpl::_readFileToMemory() {
-    std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
+    // std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
 
     if (!m_ssTableFile) {
         std::optional<SSTableFile> ssTableFileOpt { _decode(m_fullPath) };
@@ -339,6 +339,11 @@ std::optional<Error> SSTableFileManagerImpl::_init() {
         return err;
     }
 
+    std::vector<Entry> emptyEntries{};
+    for (const auto& entry : m_ssTableFile->entries) {
+        m_bloomFilter.insert(entry.key);
+    }
+
     m_initialized = true;
 
     return std::nullopt;
@@ -376,7 +381,11 @@ std::optional<std::string> SSTableFileManagerImpl::getEndKey() {
     return m_ssTableFile->entries.back().key;
 };
 
-
 bool SSTableFileManagerImpl::contains(std::string key) {
     // check bloom filter if the entry exists
+    if (!m_initialized) {
+        _init();
+    }
+
+    return m_bloomFilter.contains(key);
 }; 
