@@ -8,6 +8,19 @@
 SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath) : m_directoryPath{directoryPath} {};
 SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName} {};
 
+std::string _generateSSTableFileName() {
+    static std::atomic<uint64_t> counter{0};
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        now.time_since_epoch()
+    ).count();
+
+    uint64_t uniqueId = (ns << 16) ^ counter.fetch_add(1); // mix counter + time
+
+    return "table-" + std::to_string(uniqueId);
+}
+
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
 std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const {
     // std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
@@ -211,7 +224,7 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
     std::cout << "[SSTableFileManager.write()]" << std::endl;
 
     TimestampType timestamp { _getTimeNow() };
-    std::string fname { "table-" + std::to_string(timestamp) };
+    std::string fname { _generateSSTableFileName() };
     std::string fullPath { m_directoryPath + "/" + fname };
     m_fullPath = fullPath;
     m_fname = fname;
@@ -310,7 +323,11 @@ std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp() const {
     return m_ssTableFile->timestamp;
 };
 
-std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries() const  {
+std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries() {
+    if (!m_initialized) {
+        init();
+    }
+
     return m_ssTableFile->entries;
 };
 

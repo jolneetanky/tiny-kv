@@ -22,8 +22,8 @@ class SSTableManagerImpl : public SSTableManager {
         std::optional<Error> _compactLevelN(int n);
 
         std::optional<std::vector<Entry>> _mergeEntries(std::vector<const Entry*> entries) const;
-        std::vector<std::vector<const SSTableFileManager*>> groupL0Overlaps(std::vector<const SSTableFileManager*> fileManagers) const;
-        std::optional<std::vector<const SSTableFileManager*>> _getOverlappingFiles(int level, std::string start, std::string end) const;
+        std::vector<std::vector<SSTableFileManager*>> groupL0Overlaps(std::vector<SSTableFileManager*> fileManagers) const;
+        std::optional<std::vector<SSTableFileManager*>> _getOverlappingFiles(int level, std::string start, std::string end) const;
 
     public:
         std::optional<Error> write(std::vector<const Entry*> entries, int level) override;

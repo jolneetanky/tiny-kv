@@ -14,7 +14,7 @@ class SSTableFileManager {
 
         virtual std::optional<TimestampType> getTimestamp() const = 0;
         // NOTE: this returns entries in sorted order!!
-        virtual std::optional<std::vector<Entry>> getEntries() const = 0;
+        virtual std::optional<std::vector<Entry>> getEntries() = 0;
         virtual std::string getFullPath() const = 0;
         virtual std::optional<std::string> getStartKey() const = 0;
         virtual std::optional<std::string> getEndKey() const = 0;

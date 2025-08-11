@@ -12,6 +12,7 @@ enum class Command
     DEL,
     EXIT,
     UNKNOWN,
+    COMPACT,
 };
 
 Command parseCommand(const std::string &cmd)
@@ -24,6 +25,8 @@ Command parseCommand(const std::string &cmd)
         return Command::DEL;
     if (cmd == "EXIT" || cmd == "exit")
         return Command::EXIT;
+    if (cmd == "COMPACT" || cmd == "compact")
+        return Command::COMPACT;
     return Command::UNKNOWN;
 }
 
@@ -40,7 +43,6 @@ int main()
     DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
 
     ssTableManagerImpl.initLevels();
-    ssTableManagerImpl.compact();
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
     std::string line; // variable `line` that stores a (dynamically resized) string
@@ -94,6 +96,10 @@ int main()
             }
             dbImpl.del(key);
             // memTableImpl.del(key);
+            break;
+
+        case Command::COMPACT:
+            ssTableManagerImpl.compact();
             break;
 
         case Command::EXIT:
