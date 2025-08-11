@@ -57,6 +57,17 @@
         "tuple": "cpp",
         "utility": "cpp",
         "any": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "set": "cpp",
+        "charconv": "cpp",
+        "cinttypes": "cpp",
+        "codecvt": "cpp",
+        "condition_variable": "cpp",
+        "csignal": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "span": "cpp",
+        "unordered_set": "cpp",
+        "chrono": "cpp"
     }
 }

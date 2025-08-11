@@ -3,15 +3,17 @@
 #include "db_impl.h"
 #include <iostream>
 #include <optional>
+#include "../types/entry.h"
 
-DbImpl::DbImpl(MemTable &memTable) : m_memtable{memTable} {};
+DbImpl::DbImpl(MemTable &memTable, SSTableManager &ssTableManager) : m_memtable{memTable}, m_ssTableManager{ssTableManager} {};
 
 void DbImpl::put(std::string key, std::string val)
 {
-    Error* err {m_memtable.put(key, val)};
+    std::optional<Error> errOpt {m_memtable.put(key, val)};
 
-    if (err != nullptr) {
-        std::cout << "[DbImpl] error: " << err->error << "\n";
+    if (errOpt) {
+        std::cout << "[DbImpl] error: " << errOpt->error << "\n";
+        return;
     }
 
     std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
@@ -19,18 +21,34 @@ void DbImpl::put(std::string key, std::string val)
 
 std::string DbImpl::get(std::string key) const
 {
-    std::string val{m_memtable.get(key).val};
-    if (val.empty())  {
+    std::optional<Entry> optEntry {m_memtable.get(key)};
+
+    if (optEntry && optEntry->tombstone) {
         std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
-    } else {
-        std::cout << "[DbImpl] GOT: " << val << "\n";
+        return "";
     }
 
-    return val;
+    if (!optEntry) {
+        optEntry = m_ssTableManager.get(key);
+
+        if (!optEntry) {
+            std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+            return "";
+        }
+    }
+
+    std::cout << "[DbImpl] GOT: " << optEntry.value().val << "\n";
+    return optEntry.value().val;
 }
 
 void DbImpl::del(std::string key)
 {
-    m_memtable.del(key);
+    std::optional<Error> errOpt { m_memtable.del(key) };
+
+    if (errOpt) {
+        std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
+        return;
+    }
+
     std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
 }

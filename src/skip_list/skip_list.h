@@ -3,21 +3,17 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 #include "../types/entry.h"
-
-// Remember each time we are always only appending entries to our skiplist.
-// no updates or wtv.
+#include "../types/error.h"
 
 class SkipList {
-    private:
-        // int m_size;
-
     public:
-        // SkipList(int size);
-        void set(Entry const &entry);
-        const Entry& get(const std::string& key);
-        std::vector<Entry> getAll() const;
-        int getLength();
+        virtual std::optional<Error> set(Entry const &entry) = 0;
+        virtual std::optional<Entry> get(const std::string& key) const = 0;
+        virtual std::optional<std::vector<Entry>> getAll() const = 0;
+        virtual std::optional<Error> clear() = 0;
+        virtual std::optional<int> getLength() const = 0;
 };
 
 #endif
