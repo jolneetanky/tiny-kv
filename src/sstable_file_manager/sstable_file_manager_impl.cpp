@@ -314,6 +314,7 @@ std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries() const  {
     return m_ssTableFile->entries;
 };
 
+// reads entries to mmemory. In future this should be hidden.
 std::optional<Error> SSTableFileManagerImpl::init() {
     std::cout << "[SSTableFileManagerImpl.init()]" << "\n";
     
@@ -358,3 +359,8 @@ std::optional<std::string> SSTableFileManagerImpl::getEndKey() const {
 
     return m_ssTableFile->entries.back().key;
 };
+
+
+bool SSTableFileManagerImpl::contains(std::string key) {
+    // check bloom filter if the entry exists
+}; 
