@@ -17,6 +17,7 @@ public:
     virtual std::optional<Error> put(const std::string &key, const std::string &val) = 0;
     virtual std::optional<Entry> get(const std::string &key) const = 0;
     virtual std::optional<Error> del(const std::string &key) = 0;
+    virtual std::optional<Error> replayWal() = 0;
     virtual ~MemTable() = default;
 };
 

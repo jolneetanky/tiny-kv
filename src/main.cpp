@@ -4,6 +4,7 @@
 #include "mem_table/mem_table_impl.h"
 #include "skip_list/skip_list_impl.h"
 #include "sstable_manager/sstable_manager_impl.h"
+#include "wal/wal.h"
 
 enum class Command
 {
@@ -39,10 +40,13 @@ int main()
     // SkipList skiplist;
     SSTableManagerImpl ssTableManagerImpl;
     SkipListImpl skipListImpl;
-    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl);
+    WAL wal(0);
+    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal);
     DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
 
     ssTableManagerImpl.initLevels();
+    // replay WAL
+    memTableImpl.replayWal();
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
     std::string line; // variable `line` that stores a (dynamically resized) string
