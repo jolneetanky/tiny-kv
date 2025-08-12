@@ -1,7 +1,7 @@
 #include "mem_table_impl.h"
 #include <optional>
 
-MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager) : m_size{size}, m_skiplist{skipList}, m_ssTableManager{ssTableManager} {}; // constructor
+MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager, WAL &wal) : m_size{size}, m_skiplist{skipList}, m_ssTableManager{ssTableManager}, m_wal{wal} {}; // constructor
 
 std::optional<Error> MemTableImpl::put(const std::string &key, const std::string &val) {
 
@@ -24,6 +24,12 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
     }
 
     // Insert in skiplist
+    // Write to WAL
+    if (const auto& err = m_wal.append(Entry(key, val))) {
+        std::cout << "[MemTableImpl.put()] Failed to append to WAL: " << err->error << "\n";
+        return Error{ "MemTableImpl.put()] Failed to PUT: Failed to write to WAL" };
+    }
+
     m_skiplist.set(Entry(key, val));
 
     return std::nullopt;
@@ -68,6 +74,12 @@ std::optional<Error> MemTableImpl::del(const std::string &key) {
             std::cout << "[MemTableImpl.del()] Failed to DELETE: " << errOpt->error << "\n";
             return Error{ "[MemTableImpl.put()] Failed to DELETE: Flushing error "};
         }
+    }
+
+    // write to WAL
+    if (const auto& err = m_wal.append(Entry(key, "val", true))) {
+        std::cout << "[MemTableImpl.put()] Failed to append to WAL: " << err->error << "\n";
+        return Error{ "MemTableImpl.put()] Failed to PUT: Failed to write to WAL" };
     }
 
     // insert tombstone entry into memtable
@@ -116,7 +128,13 @@ std::optional<Error> MemTableImpl::flushToDisk() {
 
     if (errOpt) {
         std::cout << "[MemTableImpl.flushToDisk()] ERROR: " << errOpt->error << "\n";
-        return errOpt->error;
+        return errOpt.value();
+    }
+
+    // delete the old WAL file
+    if (const auto& err = m_wal.remove()) {
+        std::cout << "[MemTableImpl.flushToDisk()] ERROR: Failed to delete WAL - " << err->error << "\n";
+        return err.value();
     }
 
     // empty skiplist
@@ -124,5 +142,32 @@ std::optional<Error> MemTableImpl::flushToDisk() {
     
     m_readOnly = false;
 
+    return std::nullopt;
+};
+
+std::optional<Error> MemTableImpl::replayWal() {
+    std::cout << "[MemTableImpl.replayWal()]" << "\n";
+    const auto& entries = m_wal.getEntries();
+    m_readOnly = true;
+
+    // read each entry to memtable
+    for (const auto& entry : entries.value()) {
+        if (m_skiplist.getLength() == m_size) {
+            flushToDisk();
+        }
+
+        m_skiplist.set(entry);
+    }
+
+    // flush to disk jic
+    if (const auto& err = flushToDisk()) {
+        std::cout << "[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error << "\n";
+        return Error{ "[MemTableImpl.replayWal()] Failed to replay WAL: Flushing error "};
+    }
+
+    // delete WAL
+    m_wal.remove();
+
+    m_readOnly = false;
     return std::nullopt;
 };
