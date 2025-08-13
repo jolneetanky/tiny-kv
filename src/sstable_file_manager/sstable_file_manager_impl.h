@@ -14,7 +14,6 @@
 // just a struct for now
 class SSTableFileManagerImpl : public SSTableFileManager {
     private:
-        // Stores an in-memory representation of the SSTableFile, so we can do things in-memory
         std::unique_ptr<SSTableFile> m_ssTableFile;
         BloomFilter m_bloomFilter;
 
@@ -30,15 +29,12 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         TimestampType _getTimeNow(); // helper to get current timestamp
         std::optional<SSTableFile> _decode(std::string file) const;
 
-        // reads the actual file and stores content in `m_ssTableFile`
-        // initializes the in-memory `m_ssTableFile`
-        std::optional<Error> _readFileToMemory();
-        std::optional<Error> _init(); // allow caller to initialize. If caller doesn't initialize, we will just lazy initialize on `get`.
+        std::optional<Error> _readFileToMemory(); // Reads file, and stores it in-memory within this object.
+        std::optional<Error> _init(); // Reads file to memory, and initializes Bloom Filter
 
     public:
-        SSTableFileManagerImpl(std::string directoryPath); // if the file doesn't exist yet
-        // initializes an SSTableFileManager with an existing fileName
-        SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName);
+        SSTableFileManagerImpl(std::string directoryPath); // use this to initialize, if the file doesn't exist yet
+        SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName); // initializes an SSTableFileManager with an existing fileName
         std::optional<Error> write(std::vector<const Entry*> entryPtrs) override;
         std::optional<Entry> get(const std::string& key) override; // searches for a key
         
@@ -48,9 +44,7 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<std::string> getStartKey() override;
         std::optional<std::string> getEndKey() override;
 
-        // might have false positives. But never false negatives.
-        // ie. if !SSTableFileManagerImpl.comtains*key)`, then the key definitely doesn't exist in SSTable.
-        bool contains(std::string key) override; 
+        bool contains(std::string key) override; // might have false positives. But never false negatives.
 
 };
 

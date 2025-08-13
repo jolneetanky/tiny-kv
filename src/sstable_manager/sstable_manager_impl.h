@@ -32,8 +32,7 @@ class SSTableManagerImpl : public SSTableManager {
 
         std::optional<Error> compact() override;
 
-        // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
-        std::optional<Error> initLevels(); 
+        std::optional<Error> initLevels(); // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
 };
 
 #endif
