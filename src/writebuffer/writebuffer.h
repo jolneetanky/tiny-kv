@@ -10,11 +10,10 @@ protected:
     int m_size;
 
 public:
-    WriteBuffer(int size); // constructor
+    WriteBuffer(int size);
     virtual void put(const std::string &key, const std::string &val) = 0;
     virtual std::string get(const std::string &key) const = 0;
     virtual void del(const std::string &key) = 0;
-    // Destructor
     virtual ~WriteBuffer() = default;
     virtual void flushToDisk() = 0;
 };

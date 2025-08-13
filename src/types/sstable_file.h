@@ -7,9 +7,8 @@
 
 struct SSTableFile {
     public:
-        // using TimestampType = long long;
-        std::vector<Entry> entries; // all the key-value pairs
-        TimestampType timestamp; // time at which this file was written
+        std::vector<Entry> entries;
+        TimestampType timestamp;
 
         SSTableFile() = default;
 

@@ -159,10 +159,12 @@ std::optional<Error> MemTableImpl::replayWal() {
         m_skiplist.set(entry);
     }
 
-    // flush to disk jic
-    if (const auto& err = flushToDisk()) {
-        std::cout << "[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error << "\n";
-        return Error{ "[MemTableImpl.replayWal()] Failed to replay WAL: Flushing error "};
+    // flush to disk if memtable is now not empty
+    if (m_skiplist.getLength() > 0) {
+        if (const auto& err = flushToDisk()) {
+            std::cout << "[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error << "\n";
+            return Error{ "[MemTableImpl.replayWal()] Failed to replay WAL: Flushing error "};
+        }
     }
 
     // delete WAL

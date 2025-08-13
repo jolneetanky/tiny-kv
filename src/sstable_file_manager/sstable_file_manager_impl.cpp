@@ -195,10 +195,10 @@ std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) con
         entries.push_back(optEntry.value());
         offset += bytesRead;
 
-        std::cout << "[SSTableFileManager.read()]" << " (" << optEntry->key << ", " << optEntry->val << ", " << optEntry->tombstone << ")" << std::endl;
+        std::cout << "[SSTableFileManager.decode()]" << " (" << optEntry->key << ", " << optEntry->val << ", " << optEntry->tombstone << ")" << std::endl;
     }
 
-    std::cout << "[SSTableFileManager.read()] Successfully read" "\n";
+    std::cout << "[SSTableFileManager._decode()] Successfully read" "\n";
     return SSTableFile{ entries, timestamp };
 };
 
@@ -356,8 +356,6 @@ std::string SSTableFileManagerImpl::getFullPath() const {
 std::optional<std::string> SSTableFileManagerImpl::getStartKey() {
     if (!m_initialized) {
         _init(); 
-        // std::cout << "[SSTableFileManager.getStartKey()] Failed to get start key: file manager not yet initialized" << "\n";
-        // return std::nullopt;
     }
 
     if (m_ssTableFile->entries.size() == 0) {

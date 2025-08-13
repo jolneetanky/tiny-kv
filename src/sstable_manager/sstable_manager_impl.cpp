@@ -53,11 +53,22 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
     std::cout << "[SSTableManagerImpl.groupL0Overlaps()]" << "\n";
     std::vector<std::vector<SSTableFileManager*>> res;
 
+    // filter out those without start keys or end keys
+    fileManagers.erase(
+    std::remove_if(fileManagers.begin(), fileManagers.end(),
+        [](SSTableFileManager* fm) {
+            return !fm->getStartKey().has_value() || !fm->getEndKey().has_value();
+        }),
+    fileManagers.end()
+    );
+
     if (fileManagers.size() == 0) {
         return res;
     }
 
+    // --- ERROR IN HERE ---
     // sort by start key
+    // if no start key, ignore. Or make it have an arbitary start key value cause it really doesn't matter
     std::sort(fileManagers.begin(), fileManagers.end(),
         [](SSTableFileManager* a, SSTableFileManager* b) {
             return a->getStartKey().value() < b->getStartKey().value();
@@ -65,9 +76,9 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
 
     // merge into `res
     res.push_back({fileManagers[0]});
-    std::string curStart = fileManagers[0]->getStartKey().value(); // the current interval
+    std::string curStart = fileManagers[0]->getStartKey().value();
     std::string curEnd = fileManagers[0]->getEndKey().value();
-    
+
     for (size_t i = 1; i < fileManagers.size(); ++i) {
         // check if this guy belongs to the previous interval
         // in the same interval
@@ -75,7 +86,6 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
 
         if (fm->getStartKey().value() <= curEnd) {
             std::string endKey = fm->getEndKey().value();
-            std::cout << "HEY " << endKey << "\n";
             if (endKey > curEnd) {
                 curEnd = endKey;
             }
@@ -86,7 +96,6 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
             continue;
         }
 
-        // if not in the same interval, update `curStart` and `curEnd`
         res.push_back({fm});
         curStart = fm->getStartKey().value();
         curEnd = fm->getEndKey().value();
@@ -95,7 +104,7 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
     return res;
 };
 
-// find files from level N that overlap with `start` and `end`
+// find files from level `level` that overlap with `start` and `end`
 std::optional<std::vector<SSTableFileManager*>> SSTableManagerImpl::_getOverlappingFiles(int level, std::string start, std::string end) const {
     std::cout << "[SSTableManagerImpl._getOverlappingFiles()]" << "\n";
 
@@ -125,7 +134,7 @@ std::optional<std::vector<SSTableFileManager*>> SSTableManagerImpl::_getOverlapp
 std::optional<Error> SSTableManagerImpl::_compactLevel0() {
     std::cout << "[SSTableManagerImpl._compactLevel0]" << "\n";
 
-    // create l1 if it doesn't exist
+    // 1. create l1 if it doesn't exist
     if (m_levelManagers.size() == 1) {
         std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(1, BASE_PATH + "/level-1");
         if (const auto &err = levelManager->init()) {
@@ -149,7 +158,6 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
     for (auto& fileManagers : groupedLevel0Files) {
         std::cout << "GROUP" << "\n";
 
-        // merge the files of each groups into `entries`
         std::cout << "[SSTableManagerImpl._compactLevel0] Merging within level..." << "\n";
         
         // sort `group` by timestamp, from newest to oldest
@@ -158,6 +166,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
                 return a->getTimestamp().value_or(0) > b->getTimestamp().value_or(0);
         });
 
+        // store all entries into `entriesToMerge`.
         // then push entries into a vector
         std::vector<Entry> entriesToMerge;
         std::vector<const Entry*> entriesToMergePtrs;
@@ -175,6 +184,8 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             entriesToMergePtrs.push_back(&entry);
         }
 
+        // merge the entries to handle newer overwrites
+        // `entries` stores 1) the particular group of entries from L0, 2) overlapping entries from L1.
         std::optional<std::vector<Entry>> entries = _mergeEntries(entriesToMergePtrs);
 
         if (!entries) {
@@ -187,8 +198,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             std::cout << "KEY: " << entry.key << ", VAL: " << entry.val << "\n";
         }
 
-        // 5. find overlapping files from L1
-
+        // 5. find overlapping files from L1, store in `overlappingFiles`
         std::string startKey = entries.value()[0].key;
         std::string endKey = entries.value().back().key;
         std::optional<std::vector<SSTableFileManager*>> overlappingFiles = _getOverlappingFiles(1, startKey, endKey);
@@ -197,19 +207,17 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             return Error{ "Failed to get overlapping files from L1" };
         }
         
-        std::vector<const Entry*> entryPtrs;
+        std::vector<const Entry*> entryPtrs; // stores pointers of entries from L0 + entries from L1 that we're gonna merge 
         for (const auto &entry : entries.value()) {
             entryPtrs.push_back(&entry);
         }
 
-        // const so i can use to delete later
         std::vector<const SSTableFileManager*> constFileManagers;
         for (const auto& fm : fileManagers) {
             constFileManagers.push_back(fm);
         }
 
-        // // if there are overlapping files in L1, merge with them
-        // if no overlapping, just write to level 1
+        // if no overlapping files in L1, just write the current (merged) entries from this group in L0
         if (overlappingFiles.value().size() == 0) {
             std::cout << "No overlaps detected" << "\n";
             m_levelManagers[1]->writeFile(entryPtrs);
@@ -217,7 +225,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             continue;
         }
 
-        // for each file, dump into a vector `oldEntries`
+        // if there are overlapping files in L1, get their entries and push into vector `entryPtrs`.
         std::cout << "OVERLAPS DETECTED" << "\n";
         for (auto &file : overlappingFiles.value())  {
             std::optional<std::vector<Entry>> entries = file->getEntries();
@@ -226,6 +234,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             }
         }
 
+        // 6. merge the entries stored in `entryPtrs`
         std::cout << "[SSTableManagerImpl._compactLevel0] Merging L0 and L1" << "\n";
         std::optional<std::vector<Entry>> mergedEntries = _mergeEntries(entryPtrs);
 
@@ -240,11 +249,13 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
             mergedEntriesPtr.push_back(&mergedEntry);
         }
 
+        // 7. write the merged entries to level 1
         m_levelManagers[1]->writeFile(mergedEntriesPtr);
 
-        // delete merged files
+        // 8. delete merged files from level 0
         m_levelManagers[0]->deleteFiles(constFileManagers);
 
+        // 9. delete merged files from level 1
         std::vector<const SSTableFileManager*> constOverlappingFiles;
         for (const auto &fm : overlappingFiles.value()) {
             constOverlappingFiles.push_back(fm);
