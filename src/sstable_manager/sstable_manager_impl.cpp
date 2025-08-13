@@ -53,11 +53,22 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
     std::cout << "[SSTableManagerImpl.groupL0Overlaps()]" << "\n";
     std::vector<std::vector<SSTableFileManager*>> res;
 
+    // filter out those without start keys or end keys
+    fileManagers.erase(
+    std::remove_if(fileManagers.begin(), fileManagers.end(),
+        [](SSTableFileManager* fm) {
+            return !fm->getStartKey().has_value() || !fm->getEndKey().has_value();
+        }),
+    fileManagers.end()
+    );
+
     if (fileManagers.size() == 0) {
         return res;
     }
 
+    // --- ERROR IN HERE ---
     // sort by start key
+    // if no start key, ignore. Or make it have an arbitary start key value cause it really doesn't matter
     std::sort(fileManagers.begin(), fileManagers.end(),
         [](SSTableFileManager* a, SSTableFileManager* b) {
             return a->getStartKey().value() < b->getStartKey().value();
@@ -65,9 +76,9 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
 
     // merge into `res
     res.push_back({fileManagers[0]});
-    std::string curStart = fileManagers[0]->getStartKey().value(); // the current interval
+    std::string curStart = fileManagers[0]->getStartKey().value();
     std::string curEnd = fileManagers[0]->getEndKey().value();
-    
+
     for (size_t i = 1; i < fileManagers.size(); ++i) {
         // check if this guy belongs to the previous interval
         // in the same interval
@@ -75,7 +86,6 @@ std::vector<std::vector<SSTableFileManager*>> SSTableManagerImpl::groupL0Overlap
 
         if (fm->getStartKey().value() <= curEnd) {
             std::string endKey = fm->getEndKey().value();
-            std::cout << "HEY " << endKey << "\n";
             if (endKey > curEnd) {
                 curEnd = endKey;
             }
