@@ -33,11 +33,6 @@ Command parseCommand(const std::string &cmd)
 
 int main()
 {
-    // DiskManagerImpl diskManagerImpl("tinyDBstore.txt");
-    // WriteBufferImpl writeBufferImpl(2, diskManagerImpl);
-    // DbImpl dbImpl(writeBufferImpl, diskManagerImpl); // Creates the object on the stack. Destroyed once `main` function returns.
-    // MemTable memTable(50);
-    // SkipList skiplist;
     SSTableManagerImpl ssTableManagerImpl;
     SkipListImpl skipListImpl;
     WAL wal(0);
@@ -45,7 +40,6 @@ int main()
     DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
 
     ssTableManagerImpl.initLevels();
-    // replay WAL
     memTableImpl.replayWal();
 
     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
@@ -88,7 +82,6 @@ int main()
                 break;
             }
             dbImpl.get(key);
-            // memTableImpl.get(key);
             break;
 
         case Command::DEL:
@@ -99,7 +92,6 @@ int main()
                 break;
             }
             dbImpl.del(key);
-            // memTableImpl.del(key);
             break;
 
         case Command::COMPACT:
