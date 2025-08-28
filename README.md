@@ -8,9 +8,12 @@ This is my very first project in C++, meant for me to get a hang of the language
 
 ## Features (Current + Planned)
 
--[x] Basic in-memory key–value store (CRUD operations) -[x] Persistent storage with Write-Ahead Log (WAL) and SSTables -[x] Compaction -[x] Bloom Filters
--[] Benchmarking and Profiling
--[] Concurrency support (thread-safe operations)
+- [x] Basic in-memory key–value store (CRUD operations)
+- [x] Persistent storage with Write-Ahead Log (WAL) and SSTables
+- [x] Compaction
+- [x] Bloom Filters
+- [] Benchmarking and Profiling
+- [] Concurrency support (thread-safe operations)
 
 ## Build & Run
 
