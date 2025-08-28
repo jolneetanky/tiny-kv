@@ -4,7 +4,7 @@ TinyKV is a minimal key-value store written in modern C++17.
 
 ## Motivation
 
-This is my very first project in C++, meant for me to get a hang of the language and to as an introduction to systems programming. I thought a key-value store would be a good place to start due to its feasible implementation.
+This is my very first project in C++, meant for me to get a hang of the language and as an introduction to systems programming. I thought a key-value store would be a good place to start due to its feasible implementation.
 
 ## Features (Current + Planned)
 
