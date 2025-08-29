@@ -1,9 +1,6 @@
 #ifndef SKIP_LIST_IMPL_H
 #define SKIP_LIST_IMPL_H
 
-// #define JHR_SKIP_LIST_IMPLEMENTATION // in order to use it
-// #include "../external/jhr_skip_list.hpp"
-
 #include <string>
 #include <vector>
 #include "../types/entry.h"
