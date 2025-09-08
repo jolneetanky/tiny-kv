@@ -1,7 +1,7 @@
 #include "mem_table_impl.h"
 #include <optional>
 
-MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager, WAL &wal) : m_size{size}, m_skiplist{skipList}, m_ssTableManager{ssTableManager}, m_wal{wal} {}; // constructor
+MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager, WAL &wal, SystemContext &systemContext) : m_size{size}, m_skiplist{skipList}, m_ssTableManager{ssTableManager}, m_wal{wal}, m_systemContext{systemContext} {}; // constructor
 
 std::optional<Error> MemTableImpl::put(const std::string &key, const std::string &val) {
 

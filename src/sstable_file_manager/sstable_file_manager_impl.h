@@ -11,17 +11,26 @@
 #include "sstable_file_manager.h"
 #include "../bloom_filter/bloom_filter.h"
 
+// contexts
+#include "../contexts/system_context.h"
+
 // just a struct for now
+// invariants: existence of an SSTableFileManager implies the file actually exists.
+// it's a logical representation of the existing file.
 class SSTableFileManagerImpl : public SSTableFileManager {
     private:
         std::unique_ptr<SSTableFile> m_ssTableFile;
-        BloomFilter m_bloomFilter;
+        std::unique_ptr<BloomFilter> m_bloomFilter;
 
         std::string m_directoryPath;
         std::string m_fname;
         std::string m_fullPath;
         bool m_initialized = false;
 
+        // contexts
+        SystemContext &m_systemContext;
+
+        // helper functions
         std::string _serializeEntry(const Entry &entry) const;
         std::optional<Entry> _deserializeEntry(const char* data, size_t size, size_t& bytesRead) const;
         bool _writeBinaryToFile(const std::string& path, const std::string& data);
@@ -33,11 +42,14 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<Error> _init(); // Reads file to memory, and initializes Bloom Filter
 
     public:
-        SSTableFileManagerImpl(std::string directoryPath); // use this to initialize, if the file doesn't exist yet
-        SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName); // initializes an SSTableFileManager with an existing fileName
+        // ctors
+        SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx); // use this to initialize, if the file doesn't exist yet. When this is called, it should create a new file in the directory.
+        SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx); // initializes an SSTableFileManager with an existing fileName
+
         std::optional<Error> write(std::vector<const Entry*> entryPtrs) override;
         std::optional<Entry> get(const std::string& key) override; // searches for a key
-        
+
+        // getters
         std::optional<std::vector<Entry>> getEntries() override;
         std::optional<TimestampType> getTimestamp() override;
         std::string getFullPath() const override;
@@ -45,7 +57,6 @@ class SSTableFileManagerImpl : public SSTableFileManager {
         std::optional<std::string> getEndKey() override;
 
         bool contains(std::string key) override; // might have false positives. But never false negatives.
-
 };
 
 #endif

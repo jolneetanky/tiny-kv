@@ -5,8 +5,11 @@
 #include <arpa/inet.h>
 #include <fstream>
 
-SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath) : m_directoryPath{ directoryPath }, m_bloomFilter{ BloomFilter(1000, 7) } {};
-SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_bloomFilter{ BloomFilter(1000, 7) } {};
+SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx) : m_directoryPath{ directoryPath }, m_systemContext { systemCtx }, m_bloomFilter { systemCtx.m_bloom_filter_factory.build() } {
+};
+
+SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_systemContext { systemCtx }, m_bloomFilter { systemCtx.m_bloom_filter_factory.build() } {
+};
 
 std::string _generateSSTableFileName() {
     static std::atomic<uint64_t> counter{0};
@@ -243,7 +246,6 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry*> ent
         writeData += _serializeEntry(*entryPtr);
     }
 
-
     writeData.append(reinterpret_cast<const char*>(&timestamp), sizeof(timestamp));
 
     std::cout << "[SSTableFileManager.write()]" << writeData << std::endl;
@@ -340,7 +342,7 @@ std::optional<Error> SSTableFileManagerImpl::_init() {
 
     std::vector<Entry> emptyEntries{};
     for (const auto& entry : m_ssTableFile->entries) {
-        m_bloomFilter.insert(entry.key);
+        m_bloomFilter->insert(entry.key);
     }
 
     m_initialized = true;
@@ -384,5 +386,5 @@ bool SSTableFileManagerImpl::contains(std::string key) {
         _init();
     }
 
-    return m_bloomFilter.contains(key);
+    return m_bloomFilter->contains(key);
 }; 

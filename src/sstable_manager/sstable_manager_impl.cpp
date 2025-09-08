@@ -10,6 +10,8 @@
 #include <limits>
 #include "../types/timestamp.h"
 
+SSTableManagerImpl::SSTableManagerImpl(SystemContext &systemContext) : m_systemContext{ systemContext } {};
+
 // KEY ASSUMPTION: the files are given in the order whcih we'd like to merge
 // so from leftmost to rightmost is the correct order.
 std::optional<std::vector<Entry>> SSTableManagerImpl::_mergeEntries(std::vector<const Entry*> entries) const {
@@ -136,7 +138,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0() {
 
     // 1. create l1 if it doesn't exist
     if (m_levelManagers.size() == 1) {
-        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(1, BASE_PATH + "/level-1");
+        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(1, BASE_PATH + "/level-1", m_systemContext);
         if (const auto &err = levelManager->init()) {
             std::cerr << "[SSTableManagerImpl._compactLevel0()] Failed to init level 1";
             return err;
@@ -283,7 +285,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevelN(int n) {
 
     // 1. Create level N + 1 if it doesn't exist
     if (m_levelManagers.size() < n + 2) {
-        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(n+1, BASE_PATH + "/level-" + std::to_string(n+1));
+        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(n+1, BASE_PATH + "/level-" + std::to_string(n+1), m_systemContext);
         if (const auto &err = levelManager->init()) {
             std::cerr << "[SSTableManagerImpl._compactLevelN()] Failed to init level " + std::to_string(n+1) << "\n";
             return err;
@@ -431,6 +433,9 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string& key) const {
     return std::nullopt;
 }
 
+// TO TEST:
+// 1) _compactLevel0()
+// 2) _compactLevel1()
 std::optional<Error> SSTableManagerImpl::compact() {
     _compactLevel0();
 
@@ -485,7 +490,7 @@ std::optional<Error> SSTableManagerImpl::initLevels() {
     // Place in index corresponding to level number
     for (const auto &[levelNum, path] : levelDirs) {
         std::cout << "[SSTableManagerImpl::initLevels()]" << path.string() << "\n";
-        auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string());
+        auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string(), m_systemContext);
         // initialize level with files
         if (auto err = level->init()) {
             return err;

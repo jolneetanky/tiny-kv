@@ -3,7 +3,7 @@
 #include <iostream>
 #include <filesystem>
 
-LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath) : m_levelNum { levelNum }, m_directoryPath { directoryPath } {};
+LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext) : m_levelNum { levelNum }, m_directoryPath { directoryPath }, m_systemContext { systemContext } {};
 
 const int &LevelManagerImpl::getLevel() {
     return m_levelNum;
@@ -12,7 +12,7 @@ const int &LevelManagerImpl::getLevel() {
 std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry*> entries) {
     std::cout << "[LevelManagerImpl.writeFile()]" << "\n";
 
-    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath));
+    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath, m_systemContext));
 
     // Get a reference to the newly added manager
     SSTableFileManager* newManager = m_ssTableFileManagers.back().get();
@@ -134,7 +134,7 @@ std::optional<Error> LevelManagerImpl::init() {
 
     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath}) {
         const std::string &fileName = dirEntry.path().filename().string();
-        auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName);
+        auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName, m_systemContext);
 
         m_ssTableFileManagers.push_back(std::move(fileManager));
     }

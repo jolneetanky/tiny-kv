@@ -10,11 +10,17 @@
 
 #include "../level_manager/level_manager.h"
 
+// contexts
+#include "../contexts/system_context.h"
+
 // actly this can be more like LevelManager
 class SSTableManagerImpl : public SSTableManager {
     private:
         int MAX_LEVEL = 2; // hardcoded for now        
         std::string BASE_PATH = "./sstables";
+
+        // System context
+        SystemContext &m_systemContext;
 
         std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 
@@ -26,6 +32,7 @@ class SSTableManagerImpl : public SSTableManager {
         std::optional<std::vector<SSTableFileManager*>> _getOverlappingFiles(int level, std::string start, std::string end) const;
 
     public:
+        SSTableManagerImpl(SystemContext &systemContext);
         std::optional<Error> write(std::vector<const Entry*> entries, int level) override;
 
         std::optional<Entry> get(const std::string& key) const override;

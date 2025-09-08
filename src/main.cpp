@@ -6,6 +6,12 @@
 #include "sstable_manager/sstable_manager_impl.h"
 #include "wal/wal.h"
 
+// contexts
+#include "contexts/system_context.h"
+
+// factories
+#include "factories/bloom_filter_factory.h"
+
 enum class Command
 {
     PUT,
@@ -33,11 +39,18 @@ Command parseCommand(const std::string &cmd)
 
 int main()
 {
-    SSTableManagerImpl ssTableManagerImpl;
+    // initialize factories
+    DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
+
+    // pass in system context
+    SystemContext systemCtx(bff); 
+
+    // initialize classes
+    SSTableManagerImpl ssTableManagerImpl(systemCtx);
     SkipListImpl skipListImpl;
     WAL wal(0);
-    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal);
-    DbImpl dbImpl(memTableImpl, ssTableManagerImpl);
+    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal, systemCtx);
+    DbImpl dbImpl(memTableImpl, ssTableManagerImpl); // this is the main class tbh that depends on the classes above
 
     ssTableManagerImpl.initLevels();
     memTableImpl.replayWal();
