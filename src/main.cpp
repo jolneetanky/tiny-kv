@@ -12,6 +12,7 @@
 // factories
 #include "factories/bloom_filter_factory.h"
 
+// TODO: instead of CLI, make it a networked interface for easier e2e testing for expected behavior.
 enum class Command
 {
     PUT,

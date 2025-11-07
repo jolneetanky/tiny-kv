@@ -10,7 +10,6 @@ void BloomFilterImpl::insert(const std::string& item) {
         m_bit_array[hash_val % m_bit_array.size()] = true; // if not there, this won't be true.
     }
 };
-
 bool BloomFilterImpl::contains(const std::string& item) const {
     for (size_t i = 0; i < m_num_hashes; ++i) {
         size_t hash_val = std::hash<std::string>{}(item + std::to_string(i));

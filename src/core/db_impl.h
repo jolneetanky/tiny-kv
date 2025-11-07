@@ -5,17 +5,18 @@
 #include "../mem_table/mem_table.h"
 #include "../sstable_manager/sstable_manager.h"
 
+// interface class
 class DbImpl : public DB
 {
 private:
-    MemTable &m_memtable; // memory component
+    MemTable &m_memtable;             // memory component
     SSTableManager &m_ssTableManager; // disk component
 
 public:
     DbImpl(MemTable &memTable, SSTableManager &ssTableManager);
-    void put(std::string key, std::string val) override;
-    std::string get(std::string key) const override;
-    void del(std::string key) override;
+    Response<void> put(std::string key, std::string val) override;
+    Response<std::string> get(std::string key) const override;
+    Response<void> del(std::string key) override;
 };
 
 #endif
