@@ -2,8 +2,8 @@
 #define DB_IMPL_H
 
 #include "db.h"
-#include "../mem_table/mem_table.h"
-#include "../sstable_manager/sstable_manager.h"
+#include "./mem_table/mem_table.h"
+#include "./sstable_manager/sstable_manager.h"
 
 // interface class
 class DbImpl : public DB

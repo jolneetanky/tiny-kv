@@ -1,10 +1,10 @@
 #include <iostream> // std::cout
 #include <sstream>  // std::istringstream
 #include "core/db_impl.h"
-#include "mem_table/mem_table_impl.h"
-#include "skip_list/skip_list_impl.h"
-#include "sstable_manager/sstable_manager_impl.h"
-#include "wal/wal.h"
+#include "core/mem_table/mem_table_impl.h"
+#include "core/skip_list/skip_list_impl.h"
+#include "core/sstable_manager/sstable_manager_impl.h"
+#include "core/wal/wal.h"
 
 // contexts
 #include "contexts/system_context.h"
@@ -12,7 +12,10 @@
 // factories
 #include "factories/bloom_filter_factory.h"
 
+// Define a CommandHandler to handle commands? I'm not sure
+
 // TODO: instead of CLI, make it a networked interface for easier e2e testing for expected behavior.
+// Main program to interact with our DB, for testing
 enum class Command
 {
     PUT,
@@ -44,7 +47,7 @@ int main()
     DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
 
     // pass in system context
-    SystemContext systemCtx(bff); 
+    SystemContext systemCtx(bff);
 
     // initialize classes
     SSTableManagerImpl ssTableManagerImpl(systemCtx);
