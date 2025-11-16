@@ -458,6 +458,7 @@ std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry *> entrie
     auto &level0Manager{m_levelManagers[0]};
 
     // we can just write as it is because the memtable entries are sorted.
+
     std::optional<Error> errOpt{level0Manager->writeFile(entries)};
     if (errOpt)
     {

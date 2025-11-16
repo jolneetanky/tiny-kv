@@ -5,8 +5,6 @@
 #include <iostream>
 #include "api/response.h"
 
-// TODO: make this into an interface or something
-// This will be a virtual class
 class DB
 {
 public:
@@ -15,6 +13,8 @@ public:
     virtual Response<std::string> get(std::string key) const = 0;
 
     virtual Response<void> del(std::string key) = 0;
+
+    virtual ~DB() = default;
 };
 
 #endif

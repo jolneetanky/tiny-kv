@@ -1,128 +1,128 @@
-#include <iostream> // std::cout
-#include <sstream>  // std::istringstream
-#include "core/db_impl.h"
-#include "core/mem_table/mem_table_impl.h"
-#include "core/skip_list/skip_list_impl.h"
-#include "core/sstable_manager/sstable_manager_impl.h"
-#include "core/wal/wal.h"
+// #include <iostream> // std::cout
+// #include <sstream>  // std::istringstream
+// #include "core/db_impl.h"
+// #include "core/mem_table/mem_table_impl.h"
+// #include "core/skip_list/skip_list_impl.h"
+// #include "core/sstable_manager/sstable_manager_impl.h"
+// #include "core/wal/wal.h"
 
-// contexts
-#include "contexts/system_context.h"
+// // contexts
+// #include "contexts/system_context.h"
 
-// factories
-#include "factories/bloom_filter_factory.h"
+// // factories
+// #include "factories/bloom_filter_factory.h"
 
-// Define a CommandHandler to handle commands? I'm not sure
+// // Define a CommandHandler to handle commands? I'm not sure
 
-// TODO: instead of CLI, make it a networked interface for easier e2e testing for expected behavior.
-// Main program to interact with our DB, for testing
-enum class Command
-{
-    PUT,
-    GET,
-    DEL,
-    EXIT,
-    UNKNOWN,
-    COMPACT,
-};
+// // TODO: instead of CLI, make it a networked interface for easier e2e testing for expected behavior.
+// // Main program to interact with our DB, for testing
+// enum class Command
+// {
+//     PUT,
+//     GET,
+//     DEL,
+//     EXIT,
+//     UNKNOWN,
+//     COMPACT,
+// };
 
-Command parseCommand(const std::string &cmd)
-{
-    if (cmd == "PUT" || cmd == "put")
-        return Command::PUT;
-    if (cmd == "GET" || cmd == "get")
-        return Command::GET;
-    if (cmd == "DEL" || cmd == "del")
-        return Command::DEL;
-    if (cmd == "EXIT" || cmd == "exit")
-        return Command::EXIT;
-    if (cmd == "COMPACT" || cmd == "compact")
-        return Command::COMPACT;
-    return Command::UNKNOWN;
-}
+// Command parseCommand(const std::string &cmd)
+// {
+//     if (cmd == "PUT" || cmd == "put")
+//         return Command::PUT;
+//     if (cmd == "GET" || cmd == "get")
+//         return Command::GET;
+//     if (cmd == "DEL" || cmd == "del")
+//         return Command::DEL;
+//     if (cmd == "EXIT" || cmd == "exit")
+//         return Command::EXIT;
+//     if (cmd == "COMPACT" || cmd == "compact")
+//         return Command::COMPACT;
+//     return Command::UNKNOWN;
+// }
 
-int main()
-{
-    // initialize factories
-    DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
+// int main()
+// {
+//     // initialize factories
+//     DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
 
-    // pass in system context
-    SystemContext systemCtx(bff);
+//     // pass in system context
+//     SystemContext systemCtx(bff);
 
-    // initialize classes
-    SSTableManagerImpl ssTableManagerImpl(systemCtx);
-    SkipListImpl skipListImpl;
-    WAL wal(0);
-    MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal, systemCtx);
-    DbImpl dbImpl(memTableImpl, ssTableManagerImpl); // this is the main class tbh that depends on the classes above
+//     // initialize classes
+//     SSTableManagerImpl ssTableManagerImpl(systemCtx);
+//     SkipListImpl skipListImpl;
+//     WAL wal(0);
+//     MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal, systemCtx);
+//     DbImpl dbImpl(memTableImpl, ssTableManagerImpl); // this is the main class tbh that depends on the classes above
 
-    ssTableManagerImpl.initLevels();
-    memTableImpl.replayWal();
+//     ssTableManagerImpl.initLevels();
+//     memTableImpl.replayWal();
 
-    std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
-    std::string line; // variable `line` that stores a (dynamically resized) string
+//     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
+//     std::string line; // variable `line` that stores a (dynamically resized) string
 
-    while (true)
-    {
-        std::cout << "> ";
-        std::getline(std::cin, line); // stores input inside variable `line`
-        std::istringstream iss(line); // instantiate a `std::istringstream` instance with the stream `line`
+//     while (true)
+//     {
+//         std::cout << "> ";
+//         std::getline(std::cin, line); // stores input inside variable `line`
+//         std::istringstream iss(line); // instantiate a `std::istringstream` instance with the stream `line`
 
-        std::string cmd;
-        iss >> cmd;
+//         std::string cmd;
+//         iss >> cmd;
 
-        std::string key;
-        iss >> key;
+//         std::string key;
+//         iss >> key;
 
-        std::string val;
-        iss >> val;
+//         std::string val;
+//         iss >> val;
 
-        Command parsedCmd = {parseCommand(cmd)};
+//         Command parsedCmd = {parseCommand(cmd)};
 
-        switch (parsedCmd)
-        {
-        case Command::PUT:
-            if (key.empty() || val.empty())
-            {
-                std::cout << "Usage: PUT <key> <value>" << "\n";
-                break;
-            }
-            dbImpl.put(key, val);
-            // memTableImpl.put(key, val);
-            break;
+//         switch (parsedCmd)
+//         {
+//         case Command::PUT:
+//             if (key.empty() || val.empty())
+//             {
+//                 std::cout << "Usage: PUT <key> <value>" << "\n";
+//                 break;
+//             }
+//             dbImpl.put(key, val);
+//             // memTableImpl.put(key, val);
+//             break;
 
-        case Command::GET:
-            if (key.empty())
-            {
-                std::cout << "Usage: GET <key>"
-                             "\n";
-                break;
-            }
-            dbImpl.get(key);
-            break;
+//         case Command::GET:
+//             if (key.empty())
+//             {
+//                 std::cout << "Usage: GET <key>"
+//                              "\n";
+//                 break;
+//             }
+//             dbImpl.get(key);
+//             break;
 
-        case Command::DEL:
-            if (key.empty())
-            {
-                std::cout << "Usage: DEL <key>"
-                             "\n";
-                break;
-            }
-            dbImpl.del(key);
-            break;
+//         case Command::DEL:
+//             if (key.empty())
+//             {
+//                 std::cout << "Usage: DEL <key>"
+//                              "\n";
+//                 break;
+//             }
+//             dbImpl.del(key);
+//             break;
 
-        case Command::COMPACT:
-            ssTableManagerImpl.compact();
-            break;
+//         case Command::COMPACT:
+//             ssTableManagerImpl.compact();
+//             break;
 
-        case Command::EXIT:
-            return 0; // return early
+//         case Command::EXIT:
+//             return 0; // return early
 
-        default:
-            std::cout << "Unknown command. Use PUT, GET, DEL, or EXIT." << "\n";
-            break;
-        }
-    }
+//         default:
+//             std::cout << "Unknown command. Use PUT, GET, DEL, or EXIT." << "\n";
+//             break;
+//         }
+//     }
 
-    return 0;
-}
+//     return 0;
+// }

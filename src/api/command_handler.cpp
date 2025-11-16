@@ -37,11 +37,5 @@ Response<std::string> CommandHandler::execute(
         return {res.success, res.message};
     }
 
-    if (lowerCmd == "compact")
-    {
-        ssTableManager_.compact();
-        return {true, "Compaction triggered"};
-    }
-
     return {false, "Unknown command"};
 }

@@ -35,16 +35,16 @@ bool _createFileIfNotExists(const std::string &fullPath)
 }
 
 // constructors
-SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_systemContext{systemCtx}, m_bloomFilter{systemCtx.m_bloom_filter_factory.build()}
+SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)}
 {
     // create file if it doesn't exist
     std::string fname = _generateSSTableFileName();
     std::string fullPath{m_directoryPath + "/" + fname};
     m_fullPath = fullPath;
     _createFileIfNotExists(fullPath);
-};
+}
 
-SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_systemContext{systemCtx}, m_bloomFilter{systemCtx.m_bloom_filter_factory.build()} {};
+SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)} {};
 
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
 std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const
@@ -197,16 +197,24 @@ TimestampType SSTableFileManagerImpl::_getTimeNow()
     return timestamp;
 }
 
-// gets entries from a particular SSTable and parses into an SSTableFile
-std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) const
+// reads entries from a particular SSTable and parses into an SSTableFile
+std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string filename) const
 {
     // read binary from file and store in a string buffer
     std::cout << "[SSTableFileManager.decode()]" << std::endl;
     std::string serializedData; // stores the binary. `readBinaryFromFile` will modify this item
 
-    if (!_readBinaryFromFile(file, serializedData))
+    if (!_readBinaryFromFile(filename, serializedData))
     {
         std::cerr << "[SSTableFileManager.decode()] Failed to read binary from file" << std::endl;
+        return std::nullopt;
+    }
+
+    // EDGE CASE: File is empty for some reason
+    // If file is empty, return nullopt
+    if (serializedData.size() == 0)
+    {
+        std::cerr << "[SSTableFileManager.decode()] ERROR: empty file: " << filename << std::endl;
         return std::nullopt;
     }
 
@@ -243,10 +251,12 @@ std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string file) con
     return SSTableFile{entries, timestamp};
 };
 
+//  Decodes the entires in a files and reads them to memory.
 std::optional<Error> SSTableFileManagerImpl::_readFileToMemory()
 {
     // std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
 
+    // if the sstable file is not yet read to memory, read it to memory
     if (!m_ssTableFile)
     {
         std::optional<SSTableFile> ssTableFileOpt{_decode(m_fullPath)};
@@ -285,8 +295,8 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry *> en
             return Error{"Failed to write to SSTable"};
         }
 
-        entries.push_back(*entryPtr); // copied into vector
-        writeData += _serializeEntry(*entryPtr);
+        entries.push_back(*entryPtr);            // copied into vector
+        writeData += _serializeEntry(*entryPtr); // serialized into binary
     }
 
     writeData.append(reinterpret_cast<const char *>(&timestamp), sizeof(timestamp));
@@ -298,7 +308,7 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry *> en
         return Error{"Failed to write to SSTable"};
     }
 
-    m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not reference
+    m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not referenced
 
     std::cout << "[SSTableFileManager.write()] Successfully WRITE SSTable to path " << fullPath << "\n";
     return std::nullopt;
@@ -374,7 +384,12 @@ std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp()
 {
     if (!m_initialized)
     {
-        _init();
+        std::optional<Error> err{_init()};
+        if (err)
+        {
+            std::cerr << "[SSTableFileManagerImpl.getTimestamp()] Failed to read file to memory: " << err->error << "\n";
+            return std::nullopt;
+        }
     }
 
     return m_ssTableFile->timestamp;
@@ -384,7 +399,12 @@ std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries()
 {
     if (!m_initialized)
     {
-        _init();
+        std::optional<Error> err{_init()};
+        if (err)
+        {
+            std::cerr << "[SSTableFileManagerImpl.getEntries()] Failed to read file to memory: " << err->error << "\n";
+            return std::nullopt;
+        }
     }
 
     return m_ssTableFile->entries;
@@ -393,11 +413,11 @@ std::optional<std::vector<Entry>> SSTableFileManagerImpl::getEntries()
 // reads entries to mmemory. In future this should be hidden.
 std::optional<Error> SSTableFileManagerImpl::_init()
 {
-    std::cout << "[SSTableFileManagerImpl.init()]" << "\n";
+    std::cout << "[SSTableFileManagerImpl.init()]" << std::endl;
 
     if (const auto &err = _readFileToMemory())
     {
-        std::cout << "[SSTableFileManagerImpl.init()] Failed to initialize file" << "\n";
+        std::cout << "[SSTableFileManagerImpl.init()] Failed to initialize file" << std::endl;
         return err;
     }
 
@@ -409,6 +429,7 @@ std::optional<Error> SSTableFileManagerImpl::_init()
 
     m_initialized = true;
 
+    std::cout << "[SSTableFileManagerImpl.init()] end" << std::endl;
     return std::nullopt;
 };
 
@@ -450,11 +471,19 @@ std::optional<std::string> SSTableFileManagerImpl::getEndKey()
 
 bool SSTableFileManagerImpl::contains(std::string key)
 {
+    std::cout << "[SSTableFileManagerImpl.contains()]" << std::endl;
     // check bloom filter if the entry exists
     if (!m_initialized)
     {
-        _init();
+        std::optional<Error> err{_init()};
+        if (err)
+        {
+            std::cerr << "[SSTableFileManagerImpl.get()] Failed to read file to memory: " << err->error << "\n";
+            return false;
+        }
     }
+
+    std::cout << "[SSTableFileManagerImpl.contains()] after init" << std::endl;
 
     return m_bloomFilter->contains(key);
 };

@@ -22,7 +22,6 @@ private:
     SystemContext &m_systemContext;
 
     bool isReadOnly() const;
-    std::optional<Error> flushToDisk(); // we can just do SkipList.getAll() then flush to disk
 
 public:
     MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTableManager, WAL &wal, SystemContext &m_systemContext); // constructor
@@ -30,6 +29,7 @@ public:
     std::optional<Entry> get(const std::string &key) const override;
     std::optional<Error> del(const std::string &key) override;
     std::optional<Error> replayWal() override;
+    std::optional<Error> flushToDisk(); // expose so external DB layer can call
 };
 
 #endif

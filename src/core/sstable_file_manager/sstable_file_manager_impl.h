@@ -21,7 +21,7 @@ class SSTableFileManagerImpl : public SSTableFileManager
 {
 private:
     std::unique_ptr<SSTableFile> m_ssTableFile;
-    std::unique_ptr<BloomFilter> m_bloomFilter;
+    std::unique_ptr<BloomFilter> m_bloomFilter; // dies tgt with this FileManager
 
     std::string m_directoryPath;
     std::string m_fname;

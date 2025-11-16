@@ -12,7 +12,7 @@ const int &LevelManagerImpl::getLevel()
 
 std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry *> entries)
 {
-    std::cout << "[LevelManagerImpl.writeFile()]" << "\n";
+    std::cout << "[LevelManagerImpl.writeFile()]" << std::endl;
 
     m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath, m_systemContext));
 
@@ -22,7 +22,7 @@ std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry *> entr
     std::optional<Error> errOpt{newManager->write(entries)};
     if (errOpt)
     {
-        std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable";
+        std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable" << std::endl;
         return errOpt;
     }
 

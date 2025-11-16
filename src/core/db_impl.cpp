@@ -5,57 +5,76 @@
 #include <optional>
 #include "../types/entry.h"
 
-DbImpl::DbImpl(MemTable &memTable, SSTableManager &ssTableManager) : m_memtable{memTable}, m_ssTableManager{ssTableManager} {};
+DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
+               std::unique_ptr<SkipListImpl> skip,
+               std::unique_ptr<WAL> wal,
+               std::unique_ptr<SSTableManagerImpl> sst,
+               std::unique_ptr<MemTableImpl> mem)
+    : m_systemCtx(std::move(ctx)), m_skipList(std::move(skip)), m_wal(std::move(wal)), m_ssTableManager(std::move(sst)), m_memTable(std::move(mem))
+{
+}
 
 Response<void> DbImpl::put(std::string key, std::string val)
 {
-    std::optional<Error> errOpt{m_memtable.put(key, val)};
+    std::optional<Error> errOpt{(*m_memTable).put(key, val)};
 
     if (errOpt)
     {
-        std::cout << "[DbImpl] error: " << errOpt->error << "\n";
+        // std::cout << "[DbImpl] error: " << errOpt->error << "\n";
         return Response<void>(false, errOpt->error);
     }
 
-    std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
+    // std::cout << "[DbImpl]" << " PUT " << key << ", " << val << "\n";
     return Response<void>(true, "Successfully PUT key " + key + " in DB");
 }
 
 Response<std::string> DbImpl::get(std::string key) const
 {
-    std::optional<Entry> optEntry{m_memtable.get(key)};
+    std::optional<Entry> optEntry{(*m_memTable).get(key)};
 
     if (optEntry && optEntry->tombstone)
     {
-        std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+        // std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
         return Response<std::string>(false, "Key does not exist", std::nullopt);
     }
 
     if (!optEntry)
     {
-        optEntry = m_ssTableManager.get(key);
+        optEntry = (*m_ssTableManager).get(key);
 
         if (!optEntry)
         {
-            std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
+            // std::cout << "[DbImpl]" << " Key \"" << key << "\" does not exist." << "\n";
             return Response<std::string>(false, "Key does not exist", std::nullopt);
         }
     }
 
-    std::cout << "[DbImpl] GOT: " << optEntry.value().val << "\n";
+    // std::cout << "[DbImpl] GOT: " << optEntry.value().val << "\n";
     return Response<std::string>(true, "", optEntry.value().val);
 }
 
 Response<void> DbImpl::del(std::string key)
 {
-    std::optional<Error> errOpt{m_memtable.del(key)};
+    std::optional<Error> errOpt{m_memTable->del(key)};
 
     if (errOpt)
     {
-        std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
+        // std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
         return Response<void>(false, "Failed to DELETE key: " + errOpt->error);
     }
 
-    std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
+    // std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
     return Response<void>(true, "Successfully DELETE key " + key);
+}
+
+Response<void> DbImpl::forceCompactForTests()
+{
+    m_ssTableManager->compact();
+    return Response<void>(true, "Successfully compacted DB");
+}
+
+Response<void> DbImpl::forceFlushForTests()
+{
+    m_memTable->flushToDisk();
+    return Response<void>(true, "Successfully flushed memtable to disk");
 }
