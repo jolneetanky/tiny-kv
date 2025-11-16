@@ -4,6 +4,7 @@
 #include <chrono> // for std::chrono::system_clock
 #include <arpa/inet.h>
 #include <fstream>
+#include "core/bloom_filter/bloom_filter_impl.h"
 
 // utils
 std::string _generateSSTableFileName()
@@ -482,8 +483,6 @@ bool SSTableFileManagerImpl::contains(std::string key)
             return false;
         }
     }
-
-    std::cout << "[SSTableFileManagerImpl.contains()] after init" << std::endl;
 
     return m_bloomFilter->contains(key);
 };

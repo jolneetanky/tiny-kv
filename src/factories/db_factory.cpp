@@ -1,5 +1,4 @@
 #include "db_factory.h"
-#include "factories/bloom_filter_factory.h"
 #include "contexts/system_context.h"
 #include "core/sstable_manager/sstable_manager_impl.h"
 #include "core/skip_list/skip_list_impl.h"
@@ -11,10 +10,10 @@ std::unique_ptr<DB> DbFactory::createDefaultDb()
 {
 
     // initialize factories
-    auto bff = std::make_unique<DefaultBloomFilterFactory>();
+    // auto bff = std::make_unique<DefaultBloomFilterFactory>();
 
     // pass in system context
-    auto systemCtx = std::make_unique<SystemContext>(*bff);
+    auto systemCtx = std::make_unique<SystemContext>();
 
     // initialize classes
     auto ssTableManagerImpl = std::make_unique<SSTableManagerImpl>(*systemCtx);
@@ -33,10 +32,10 @@ std::unique_ptr<DB> DbFactory::createDefaultDb()
 std::unique_ptr<DbImpl> DbFactory::createDbForTests()
 {
     // initialize factories
-    auto bff = std::make_unique<DefaultBloomFilterFactory>(); // dies when this goes out of scope; system, also we don't need this guy
+    // auto bff = std::make_unique<DefaultBloomFilterFactory>(); // dies when this goes out of scope; system, also we don't need this guy
 
     // pass in system context
-    auto systemCtx = std::make_unique<SystemContext>(*bff);
+    auto systemCtx = std::make_unique<SystemContext>();
 
     // initialize classes
     auto ssTableManagerImpl = std::make_unique<SSTableManagerImpl>(*systemCtx);
