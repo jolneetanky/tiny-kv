@@ -32,6 +32,9 @@ private:
     SystemContext &m_systemContext;
 
     // helper functions
+    std::string _generateSSTableFileName() const;
+    bool _createFileIfNotExists(const std::string &fullPath) const;
+
     std::string _serializeEntry(const Entry &entry) const;
     std::optional<Entry> _deserializeEntry(const char *data, size_t size, size_t &bytesRead) const;
     bool _writeBinaryToFile(const std::string &path, const std::string &data);
