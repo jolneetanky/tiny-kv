@@ -457,8 +457,7 @@ std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry *> entrie
 
     auto &level0Manager{m_levelManagers[0]};
 
-    // we can just write as it is because the memtable entries are sorted.
-
+    // write entries to file
     std::optional<Error> errOpt{level0Manager->writeFile(entries)};
     if (errOpt)
     {
@@ -507,10 +506,12 @@ std::optional<Error> SSTableManagerImpl::compact()
     return std::nullopt;
 };
 
-// for every directory in "./sstables/"
-// in ascending order of file name (because name of each level folder will be like l`level-0, level-1`, etc)
-// i need to create a new FileManager
-// and push it into m_levels, of type `std::vector<std::unique_ptr<LevelManager>>`
+/*
+This function:
+1. Creates directory ./sstables/level-0 if it doesn't exist
+2. Iterates through the base directory path ("./sstables/") to find the other level directories
+3. Sorts these directories by level
+*/
 std::optional<Error> SSTableManagerImpl::initLevels()
 {
     std::cout << "[SSTableManagerImpl::initLevels()]" << "\n";
@@ -559,7 +560,6 @@ std::optional<Error> SSTableManagerImpl::initLevels()
     // Place in index corresponding to level number
     for (const auto &[levelNum, path] : levelDirs)
     {
-        std::cout << "[SSTableManagerImpl::initLevels()]" << path.string() << "\n";
         auto level = std::make_unique<LevelManagerImpl>(levelNum, path.string(), m_systemContext);
         // initialize level with files
         if (auto err = level->init())

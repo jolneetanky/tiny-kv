@@ -5,12 +5,13 @@
 // #include "core/skip_list/skip_list_impl.h"
 // #include "core/sstable_manager/sstable_manager_impl.h"
 // #include "core/wal/wal.h"
+// #include "factories/db_factory.h"
 
 // // contexts
 // #include "contexts/system_context.h"
 
 // // factories
-// #include "factories/bloom_filter_factory.h"
+// // #include "factories/bloom_filter_factory.h"
 
 // // Define a CommandHandler to handle commands? I'm not sure
 
@@ -44,20 +45,22 @@
 // int main()
 // {
 //     // initialize factories
-//     DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
+//     // DefaultBloomFilterFactory bff; // we can have a factory for mocks as well
 
 //     // pass in system context
-//     SystemContext systemCtx(bff);
+//     // SystemContext systemCtx;
 
-//     // initialize classes
-//     SSTableManagerImpl ssTableManagerImpl(systemCtx);
-//     SkipListImpl skipListImpl;
-//     WAL wal(0);
-//     MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal, systemCtx);
-//     DbImpl dbImpl(memTableImpl, ssTableManagerImpl); // this is the main class tbh that depends on the classes above
+//     // // initialize classes
+//     // SSTableManagerImpl ssTableManagerImpl(systemCtx);
+//     // SkipListImpl skipListImpl;
+//     // WAL wal(0);
+//     // MemTableImpl memTableImpl(3, skipListImpl, ssTableManagerImpl, wal, systemCtx);
+//     // DbImpl dbImpl(memTableImpl, ssTableManagerImpl); // this is the main class tbh that depends on the classes above
 
-//     ssTableManagerImpl.initLevels();
-//     memTableImpl.replayWal();
+//     // ssTableManagerImpl.initLevels();
+//     // memTableImpl.replayWal();
+
+//     std::unique_ptr<DB> db = DbFactory::createDefaultDb(); // rvalue of type `unique_ptr`, triggers move ctor of `unique_ptr`
 
 //     std::cout << "Welcome to TinyKV! Type PUT, GET, DEL or EXIT. \n";
 //     std::string line; // variable `line` that stores a (dynamically resized) string

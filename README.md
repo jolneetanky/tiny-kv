@@ -12,7 +12,9 @@ This is my very first project in C++, meant for me to get a hang of the language
 - [x] Persistent storage with Write-Ahead Log (WAL) and SSTables
 - [x] Compaction
 - [x] Bloom Filters
-- [ ] Benchmarking and Profiling
+- [ ] Benchmarking and Profiling (against LevelDB)
+- [ ] Add iterators
+- [ ] Add snapshots
 - [ ] Concurrency support (thread-safe operations)
 
 ## Build & Run

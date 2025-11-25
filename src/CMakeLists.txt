@@ -15,8 +15,8 @@ target_include_directories(tinykv_core PUBLIC
 )
 
 # Add CLI executable
-add_executable(tinykv_cli cli/cli.cpp)
-target_link_libraries(tinykv_cli PRIVATE tinykv_core)
+# add_executable(tinykv_cli cli/cli.cpp)
+# target_link_libraries(tinykv_cli PRIVATE tinykv_core)
 
 # # Collect all .cpp files under src/, except main.cpp
 # file(GLOB_RECURSE TINYKV_SRC

@@ -35,14 +35,18 @@ bool _createFileIfNotExists(const std::string &fullPath)
     return true;
 }
 
-// constructors
-SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)}
+// CTORS
+/*
+1. Creates file it it doesn't exist (because an existence of this instance ust be tied to an actual file, empty or not)
+*/
+SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx, const std::vector<const Entry *> &entries) : m_directoryPath{directoryPath}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)}
 {
     // create file if it doesn't exist
     std::string fname = _generateSSTableFileName();
     std::string fullPath{m_directoryPath + "/" + fname};
     m_fullPath = fullPath;
     _createFileIfNotExists(fullPath);
+    _writeEntriesToFile(entries, fullPath);
 }
 
 SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)} {};
@@ -272,17 +276,19 @@ std::optional<Error> SSTableFileManagerImpl::_readFileToMemory()
     return std::nullopt;
 };
 
-// NOTE: this impl will overwrite existing `m_fname` and `m_fullPath` if those have alr been initialized.
-std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry *> entryPtrs)
-{
+/*
+1. Serializes entries.
+2. Writes those serialized entries into file.
+3. Writes those entries into memory (currently int)
 
-    std::cout << "[SSTableFileManager.write()]" << std::endl;
+ASSUMPTIONS:
+1. `fname` is the name of a file that already exists.
+*/
+std::optional<Error> SSTableFileManagerImpl::_writeEntriesToFile(const std::vector<const Entry *> &entryPtrs, const std::string &fname)
+{
+    std::cout << "[SSTableFileManager._writeEntriesToFile()]" << std::endl;
 
     TimestampType timestamp{_getTimeNow()};
-    std::string fname{_generateSSTableFileName()};
-    std::string fullPath{m_directoryPath + "/" + fname};
-    m_fullPath = fullPath;
-    m_fname = fname;
 
     std::vector<Entry> entries;
 
@@ -292,7 +298,7 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry *> en
     {
         if (entryPtr == nullptr)
         {
-            std::cerr << "[SSTableFileManager.write()] Failed to write: Null entry pointer in entries!\n";
+            std::cerr << "[SSTableFileManager.writeEntriesToFile()] Failed to write: Null entry pointer in entries!\n";
             return Error{"Failed to write to SSTable"};
         }
 
@@ -302,16 +308,15 @@ std::optional<Error> SSTableFileManagerImpl::write(std::vector<const Entry *> en
 
     writeData.append(reinterpret_cast<const char *>(&timestamp), sizeof(timestamp));
 
-    std::cout << "[SSTableFileManager.write()]" << writeData << std::endl;
-    if (!_writeBinaryToFile(fullPath, writeData))
+    if (!_writeBinaryToFile(fname, writeData))
     {
-        std::cerr << "[SSTableFileManager.write()] Failed to write to SSTable";
+        std::cerr << "[SSTableFileManager._writeEntriesToFile()] Failed to write to SSTable";
         return Error{"Failed to write to SSTable"};
     }
 
     m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not referenced
 
-    std::cout << "[SSTableFileManager.write()] Successfully WRITE SSTable to path " << fullPath << "\n";
+    std::cout << "[SSTableFileManager._writeEntriesToFile()] Successfully WRITE SSTable to path " << fname << "\n";
     return std::nullopt;
 };
 

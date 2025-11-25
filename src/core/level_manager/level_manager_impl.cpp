@@ -10,21 +10,13 @@ const int &LevelManagerImpl::getLevel()
     return m_levelNum;
 }
 
-std::optional<Error> LevelManagerImpl::writeFile(std::vector<const Entry *> entries)
+std::optional<Error> LevelManagerImpl::writeFile(const std::vector<const Entry *> &entries)
 {
     std::cout << "[LevelManagerImpl.writeFile()]" << std::endl;
 
-    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath, m_systemContext));
-
-    // Get a reference to the newly added manager
-    SSTableFileManager *newManager = m_ssTableFileManagers.back().get();
-
-    std::optional<Error> errOpt{newManager->write(entries)};
-    if (errOpt)
-    {
-        std::cerr << "[SSTableManagerImpl.write()] Failed to write to SSTable" << std::endl;
-        return errOpt;
-    }
+    // construct an SSTableFileManager, initialized with entries
+    // they are automatically written to disk in the ctor (as per semantics of SSTableFileManager)
+    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath, m_systemContext, entries));
 
     return std::nullopt;
 };
@@ -133,11 +125,15 @@ std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFile
     return std::nullopt;
 };
 
+/*
+1. Creates the directory for this level if it doesn't exist
+2. Look through existing files (ie. SSTables) in this level, loads their manager into memory
+*/
 std::optional<Error> LevelManagerImpl::init()
 {
     std::cout << "[LevelManagerImpl.init()]" << "\n";
 
-    // create directory if it doesn't exist
+    // 1. Ceate directory if it doesn't exist
     if (!std::filesystem::exists(m_directoryPath))
     {
         try
@@ -154,6 +150,7 @@ std::optional<Error> LevelManagerImpl::init()
         }
     }
 
+    // 2. Look thorugh existing files in the directory for this level, and initialize them
     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
     {
         const std::string &fileName = dirEntry.path().filename().string();

@@ -32,7 +32,7 @@ public:
     Response<std::string> get(std::string key) const override;
     Response<void> del(std::string key) override;
 
-    Response<void> forceCompactForTests(); // for testing purposes
+    Response<void> forceCompactForTests(); // for testing purposes; force memtable compaction
     Response<void> forceFlushForTests();
 };
 

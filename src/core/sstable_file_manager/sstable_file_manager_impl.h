@@ -38,16 +38,17 @@ private:
     bool _readBinaryFromFile(const std::string &filename, std::string &outData) const;
     TimestampType _getTimeNow(); // helper to get current timestamp
     std::optional<SSTableFile> _decode(std::string file) const;
+    std::optional<Error> _writeEntriesToFile(const std::vector<const Entry *> &entryPtrs, const std::string &fname);
 
     std::optional<Error> _readFileToMemory(); // Reads file, and stores it in-memory within this object.
     std::optional<Error> _init();             // Reads file to memory, and initializes Bloom Filter
 
 public:
     // ctors
-    SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx);                                     // use this to initialize, if the file doesn't exist yet. When this is called, it should create a new file in the directory.
-    SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx); // initializes an SSTableFileManager with an existing fileName
+    SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx, const std::vector<const Entry *> &entries); // use this to initialize, if the file doesn't exist yet. When this is called, it should create a new file in the directory.
+    SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx);        // initializes an SSTableFileManager with an existing fileName
 
-    std::optional<Error> write(std::vector<const Entry *> entryPtrs) override;
+    // std::optional<Error> write(std::vector<const Entry *> entryPtrs) override;
     std::optional<Entry> get(const std::string &key) override; // searches for a key
 
     // getters

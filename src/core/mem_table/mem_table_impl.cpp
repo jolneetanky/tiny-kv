@@ -131,14 +131,9 @@ std::optional<Error> MemTableImpl::flushToDisk()
     // gather this in a vector or smt and pass that vector into your SSTable builder
     for (const Entry &entry : optEntries.value())
     {
-        std::string key{entry.key};
-        std::string val{entry.val};
-        bool tombstoneFlag{entry.tombstone};
-        std::string tombstone = tombstoneFlag ? "true" : "false";
-
         entryPtrs.push_back(&entry);
 
-        std::cout << "(" << key << ", " << val << ", " << tombstone << ")" << std::endl;
+        std::cout << entry << std::endl;
     }
 
     // write to file
