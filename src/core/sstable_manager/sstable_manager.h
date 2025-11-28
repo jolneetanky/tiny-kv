@@ -10,7 +10,7 @@
 class SSTableManager
 {
 public:
-    virtual std::optional<Error> write(std::vector<const Entry *> entries, int level) = 0;
+    virtual std::optional<Error> write(const std::vector<const Entry *> &entries, int level) = 0;
     virtual std::optional<Entry> get(const std::string &key) const = 0;
     virtual std::optional<Error> compact() = 0;
     virtual ~SSTableManager() = default;

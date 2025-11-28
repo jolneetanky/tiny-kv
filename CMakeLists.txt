@@ -21,7 +21,19 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_subdirectory(src)
-add_subdirectory(tests) # uncomment when you wanna include tests
+add_subdirectory(tests)
+
+set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/spdlog)
+
+option(TINYKV_BUILD_BENCHMARKS "Build the standalone benchmark executable" ON)
+if (TINYKV_BUILD_BENCHMARKS)
+  add_executable(tinykv_benchmark tinykv_benchmarks/main.cpp)
+  target_link_libraries(tinykv_benchmark PRIVATE tinykv_core)
+endif()
 
 # cmake_minimum_required(VERSION 3.14)
 # project(tinykv)

@@ -8,9 +8,11 @@
 #include <regex>
 #include <unordered_set>
 #include <limits>
+#include <utility>
 #include "types/timestamp.h"
 
-SSTableManagerImpl::SSTableManagerImpl(SystemContext &systemContext) : m_systemContext{systemContext} {};
+SSTableManagerImpl::SSTableManagerImpl(SystemContext &systemContext, std::string basePath)
+    : m_basePath{std::move(basePath)}, m_systemContext{systemContext} {};
 
 // KEY ASSUMPTION: the files are given in the order whcih we'd like to merge
 // so from leftmost to rightmost is the correct order.
@@ -155,7 +157,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0()
     // 1. create l1 if it doesn't exist
     if (m_levelManagers.size() == 1)
     {
-        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(1, BASE_PATH + "/level-1", m_systemContext);
+        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(1, m_basePath + "/level-1", m_systemContext);
         if (const auto &err = levelManager->init())
         {
             std::cerr << "[SSTableManagerImpl._compactLevel0()] Failed to init level 1";
@@ -325,7 +327,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevelN(int n)
     // 1. Create level N + 1 if it doesn't exist
     if (m_levelManagers.size() < n + 2)
     {
-        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(n + 1, BASE_PATH + "/level-" + std::to_string(n + 1), m_systemContext);
+        std::unique_ptr<LevelManagerImpl> levelManager = std::make_unique<LevelManagerImpl>(n + 1, m_basePath + "/level-" + std::to_string(n + 1), m_systemContext);
         if (const auto &err = levelManager->init())
         {
             std::cerr << "[SSTableManagerImpl._compactLevelN()] Failed to init level " + std::to_string(n + 1) << "\n";
@@ -446,7 +448,7 @@ std::optional<Error> SSTableManagerImpl::_compactLevelN(int n)
 };
 
 // write all entries into a file (serialize each entry)
-std::optional<Error> SSTableManagerImpl::write(std::vector<const Entry *> entries, int level)
+std::optional<Error> SSTableManagerImpl::write(const std::vector<const Entry *> &entries, int level)
 {
     std::cout << "[SSTableManagerImpl.write()]" << std::endl;
 
@@ -516,7 +518,7 @@ std::optional<Error> SSTableManagerImpl::initLevels()
 {
     std::cout << "[SSTableManagerImpl::initLevels()]" << "\n";
 
-    const std::string &basePath = BASE_PATH;
+    const std::string &basePath = m_basePath;
     const std::string &level0Path = basePath + "/level-0";
     std::vector<std::pair<int, std::filesystem::path>> levelDirs;
 

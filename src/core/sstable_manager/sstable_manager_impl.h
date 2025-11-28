@@ -7,7 +7,6 @@
 #include "types/sstable_file.h"
 #include "core/sstable_manager/sstable_manager.h"
 #include "core/sstable_file_manager/sstable_file_manager.h"
-
 #include "core/level_manager/level_manager.h"
 
 // contexts
@@ -18,7 +17,7 @@ class SSTableManagerImpl : public SSTableManager
 {
 private:
     int MAX_LEVEL = 2; // hardcoded for now
-    std::string BASE_PATH = "./sstables";
+    std::string m_basePath = "./sstables";
 
     // System context
     SystemContext &m_systemContext;
@@ -33,8 +32,8 @@ private:
     std::optional<std::vector<SSTableFileManager *>> _getOverlappingFiles(int level, std::string start, std::string end) const;
 
 public:
-    SSTableManagerImpl(SystemContext &systemContext);
-    std::optional<Error> write(std::vector<const Entry *> entries, int level) override;
+    SSTableManagerImpl(SystemContext &systemContext, std::string basePath = "./sstables");
+    std::optional<Error> write(const std::vector<const Entry *> &entries, int level) override;
 
     std::optional<Entry> get(const std::string &key) const override;
 

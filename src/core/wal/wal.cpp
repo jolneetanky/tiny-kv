@@ -3,12 +3,13 @@
 #include <cerrno>
 #include <cstring>
 #include <fstream>
+#include <utility>
 #include "wal.h"
 
-WAL::WAL(uint64_t id) : m_id{id}
+WAL::WAL(uint64_t id, std::string basePath) : m_basePath{std::move(basePath)}, m_id{id}
 {
     m_fname = _buildFileName(id);
-    m_fullPath = BASE_PATH + "/" + m_fname;
+    m_fullPath = m_basePath + "/" + m_fname;
 };
 
 void _createDirectory(std::string dirPath)
@@ -27,7 +28,7 @@ std::optional<Error> WAL::append(const Entry &e)
 {
     std::cout << "[WAL.append()]" << "\n";
     // create directory if it doens't exist
-    _createDirectory(BASE_PATH);
+    _createDirectory(m_basePath);
 
     std::ofstream out(m_fullPath, std::ios::binary | std::ios::app);
     if (!out)

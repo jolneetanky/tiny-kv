@@ -5,7 +5,6 @@ MemTableImpl::MemTableImpl(int size, SkipList &skipList, SSTableManager &ssTable
 
 std::optional<Error> MemTableImpl::put(const std::string &key, const std::string &val)
 {
-
     // insert into MemTable
     // flush if needed
     if (isReadOnly())
@@ -125,7 +124,7 @@ std::optional<Error> MemTableImpl::flushToDisk()
         return Error{"Failed to get all entries from memtable"};
     }
 
-    std::vector<const Entry *> entryPtrs;
+    std::vector<const Entry *> entryPtrs; // the pointers point to entries in the stack omg...
 
     // obtain every guy in skiplist IN ORDER.
     // gather this in a vector or smt and pass that vector into your SSTable builder
