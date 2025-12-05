@@ -27,36 +27,41 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key)
 
     // only need sort if level 0 (other levels don't have overlapping key ranges so it's ok)
     // sort by timestamp -> search L0 SSTables from newest to oldest
-    if (m_levelNum == 0)
+    // if (m_levelNum == 0)
+    // {
+    //     std::sort(m_ssTableFileManagers.begin(), m_ssTableFileManagers.end(),
+    //               [](const std::unique_ptr<SSTableFileManager> &a, const std::unique_ptr<SSTableFileManager> &b)
+    //               {
+    //                   auto ta = a->getTimestamp();
+    //                   auto tb = b->getTimestamp();
+
+    //                   // If both have timestamp, compare their values
+    //                   // Newer timestamps (with larger values) come first
+    //                   if (ta && tb)
+    //                   {
+    //                       return ta.value() > tb.value();
+    //                   }
+
+    //                   // If only a has timestamp, it is older
+    //                   if (ta && !tb)
+    //                       return true;
+
+    //                   // If only b has timestamp, it should come after a
+    //                   if (!ta && tb)
+    //                       return false;
+
+    //                   // If neither has timestamp, consider equal
+    //                   return false;
+    //               });
+    // }
+
+    // read from back to front
+    // because we wanna read in LIFO order for level 0
+    // last inserted == newest!
+    // for (const auto &fileManager : m_ssTableFileManagers)
+    for (int i = m_ssTableFileManagers.size() - 1; i >= 0; i--)
     {
-        std::sort(m_ssTableFileManagers.begin(), m_ssTableFileManagers.end(),
-                  [](const std::unique_ptr<SSTableFileManager> &a, const std::unique_ptr<SSTableFileManager> &b)
-                  {
-                      auto ta = a->getTimestamp();
-                      auto tb = b->getTimestamp();
-
-                      // If both have timestamp, compare their values
-                      // Newer timestamps (with larger values) come first
-                      if (ta && tb)
-                      {
-                          return ta.value() > tb.value();
-                      }
-
-                      // If only a has timestamp, it is older
-                      if (ta && !tb)
-                          return true;
-
-                      // If only b has timestamp, it should come after a
-                      if (!ta && tb)
-                          return false;
-
-                      // If neither has timestamp, consider equal
-                      return false;
-                  });
-    }
-
-    for (const auto &fileManager : m_ssTableFileManagers)
-    {
+        const auto &fileManager{m_ssTableFileManagers[i]};
         // now search in order
         // if key doesn't exist, continue. Else search the SSTable
         if (!fileManager->contains(key))

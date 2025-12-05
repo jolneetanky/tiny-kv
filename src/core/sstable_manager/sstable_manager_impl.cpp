@@ -480,7 +480,7 @@ std::optional<Entry> SSTableManagerImpl::get(const std::string &key) const
         std::optional<Entry> entry{levelManager->searchKey(key)};
         if (entry && !entry->tombstone)
         {
-            std::cout << "[SSTableManager.get()] FOUND" << "\n";
+            std::cout << "[SSTableManager.get()] FOUND: " << entry.value() << "\n";
             return entry;
         }
         if (entry && entry->tombstone)
