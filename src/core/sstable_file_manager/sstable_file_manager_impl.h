@@ -10,6 +10,7 @@
 #include "types/sstable_file.h"
 #include "core/sstable_file_manager/sstable_file_manager.h"
 #include "core/bloom_filter/bloom_filter.h"
+#include <cstdint> // for uint64_t
 
 // contexts
 #include "contexts/system_context.h"
@@ -27,6 +28,8 @@ private:
     std::string m_fname;
     std::string m_fullPath;
     bool m_initialized = false;
+
+    uint64_t m_file_number;
 
     // contexts
     SystemContext &m_systemContext;
@@ -51,10 +54,9 @@ public:
     SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx, const std::vector<const Entry *> &entries); // use this to initialize, if the file doesn't exist yet. When this is called, it should create a new file in the directory.
     SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx);        // initializes an SSTableFileManager with an existing fileName
 
-    // std::optional<Error> write(std::vector<const Entry *> entryPtrs) override;
-    std::optional<Entry> get(const std::string &key) override; // searches for a key
-
     // getters
+    std::optional<Entry> get(const std::string &key) override; // searches for a key
+    uint64_t getFileNumber() override;
     std::optional<std::vector<Entry>> getEntries() override;
     std::optional<TimestampType> getTimestamp() override;
     std::string getFullPath() const override;

@@ -77,7 +77,6 @@ std::vector<std::vector<SSTableFileManager *>> SSTableManagerImpl::groupL0Overla
         return res;
     }
 
-    // --- ERROR IN HERE ---
     // sort by start key
     // if no start key, ignore. Or make it have an arbitary start key value cause it really doesn't matter
     std::sort(fileManagers.begin(), fileManagers.end(),
@@ -184,11 +183,11 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0()
 
         std::cout << "[SSTableManagerImpl._compactLevel0] Merging within level..." << "\n";
 
-        // sort `group` by timestamp, from newest to oldest
+        // sort in order, where the ones that come first should be overwritten.
         std::sort(fileManagers.begin(), fileManagers.end(),
                   [](SSTableFileManager *a, SSTableFileManager *b)
                   {
-                      return a->getTimestamp().value_or(0) > b->getTimestamp().value_or(0);
+                      return a->meta() < b->meta();
                   });
 
         // store all entries into `entriesToMerge`.
@@ -305,6 +304,10 @@ std::optional<Error> SSTableManagerImpl::_compactLevel0()
     return std::nullopt;
 };
 
+// TODO: make this function compact every file in level N to the level below
+// Apparefntly this function only compacts the oldest file on level N into the next level
+// It doesn't compact ALL files to the next level.
+// It very well could though.
 std::optional<Error> SSTableManagerImpl::_compactLevelN(int n)
 {
     std::cout << "[SSTableManagerImpl.compactLevelN()]" << "\n";

@@ -56,9 +56,6 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key)
     return std::nullopt;
 };
 
-// std::optional<std::vector<const SSTableFileManager*>> LevelManagerImpl::getFiles() {
-// };
-
 std::pair<LevelManagerImpl::const_iterator, LevelManagerImpl::const_iterator> LevelManagerImpl::getFiles()
 {
     std::cout << "LevelManagerImpl.getFiles()]" << "\n";

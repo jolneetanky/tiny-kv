@@ -1,11 +1,9 @@
 #include "core/sstable_file_manager/sstable_file_manager_impl.h"
-// #include <filesystem>
 #include <iostream>
-// #include <chrono> // for std::chrono::system_clock
-// #include <arpa/inet.h>
 #include <fstream>
 
 // utils
+// TODO: make this into a separate class!
 std::string SSTableFileManagerImpl::_generateSSTableFileName() const
 {
     static std::atomic<uint64_t> counter{0};

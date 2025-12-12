@@ -8,6 +8,7 @@
 */
 SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, SystemContext &systemCtx, const std::vector<const Entry *> &entries) : m_directoryPath{directoryPath}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)}
 {
+    m_file_number = m_systemContext.file_number_allocator.next();
     // create file if it doesn't exist
     std::string fname = _generateSSTableFileName();
     std::string fullPath{m_directoryPath + "/" + fname};
@@ -16,6 +17,7 @@ SSTableFileManagerImpl::SSTableFileManagerImpl(std::string directoryPath, System
     _writeEntriesToFile(entries, fullPath);
 }
 
+// TODO: set file number
 SSTableFileManagerImpl::SSTableFileManagerImpl(const std::string &directoryPath, const std::string &fileName, SystemContext &systemCtx) : m_directoryPath{directoryPath}, m_fname{fileName}, m_fullPath{directoryPath + "/" + fileName}, m_systemContext{systemCtx}, m_bloomFilter{std::make_unique<BloomFilterImpl>(1000, 7)} {};
 
 // returns the first entry found - tombstone or not.
@@ -83,6 +85,11 @@ std::optional<Entry> SSTableFileManagerImpl::get(const std::string &key)
     std::cout << "[SSTableFileManagerImpl.get()] NOT FOUND" << "\n";
     return std::nullopt;
 };
+
+uint64_t SSTableFileManagerImpl::getFileNumber()
+{
+    return this->m_file_number;
+}
 
 std::optional<TimestampType> SSTableFileManagerImpl::getTimestamp()
 {
