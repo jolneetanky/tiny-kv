@@ -5,6 +5,7 @@
 #include "types/timestamp.h"
 #include <string>
 
+// This metadata should stay the same regardless of the SSTable implementation.
 struct SSTableMetadata
 {
     uint64_t file_number;

@@ -1,5 +1,5 @@
 #include "core/level_manager/level_manager_impl.h"
-#include "core/sstable_file_manager/sstable_file_manager_impl.h"
+#include "core/sstable_manager/sstable_manager_impl.h"
 #include <iostream>
 #include <filesystem>
 
@@ -16,7 +16,7 @@ std::optional<Error> LevelManagerImpl::writeFile(const std::vector<const Entry *
 
     // construct an SSTableFileManager, initialized with entries
     // they are automatically written to disk in the ctor (as per semantics of SSTableFileManager)
-    m_ssTableFileManagers.push_back(std::make_unique<SSTableFileManagerImpl>(m_directoryPath, m_systemContext, entries));
+    m_ssTableManagers.push_back(std::make_unique<SSTableManagerImpl>(m_directoryPath, m_systemContext, entries));
 
     return std::nullopt;
 };
@@ -28,10 +28,10 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key)
     // read from back to front
     // because we wanna read in LIFO order for level 0
     // last inserted == newest!
-    // for (const auto &fileManager : m_ssTableFileManagers)
-    for (int i = m_ssTableFileManagers.size() - 1; i >= 0; i--)
+    // for (const auto &fileManager : m_ssTableManagers)
+    for (int i = m_ssTableManagers.size() - 1; i >= 0; i--)
     {
-        const auto &fileManager{m_ssTableFileManagers[i]};
+        const auto &fileManager{m_ssTableManagers[i]};
 
         if (!fileManager->contains(key))
         {
@@ -59,10 +59,10 @@ std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key)
 std::pair<LevelManagerImpl::const_iterator, LevelManagerImpl::const_iterator> LevelManagerImpl::getFiles()
 {
     std::cout << "LevelManagerImpl.getFiles()]" << "\n";
-    return {m_ssTableFileManagers.begin(), m_ssTableFileManagers.end()};
+    return {m_ssTableManagers.begin(), m_ssTableManagers.end()};
 };
 
-std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFileManager *> files)
+std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableManager *> files)
 {
     std::cout << "[LevelManagerImpl.deleteFiles()]" << "\n";
 
@@ -78,17 +78,17 @@ std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableFile
 
         // 2. Remove the file from m_fileManagers
         auto it = std::remove_if(
-            m_ssTableFileManagers.begin(),
-            m_ssTableFileManagers.end(),
-            [&](const std::unique_ptr<SSTableFileManager> &ptr)
+            m_ssTableManagers.begin(),
+            m_ssTableManagers.end(),
+            [&](const std::unique_ptr<SSTableManager> &ptr)
             {
                 // remove if path of file matches that that we are tryna remove
                 return ptr && ptr->getFullPath() == fullPath;
             });
 
-        if (it != m_ssTableFileManagers.end())
+        if (it != m_ssTableManagers.end())
         {
-            m_ssTableFileManagers.erase(it, m_ssTableFileManagers.end());
+            m_ssTableManagers.erase(it, m_ssTableManagers.end());
         }
     }
 
@@ -124,9 +124,9 @@ std::optional<Error> LevelManagerImpl::init()
     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
     {
         const std::string &fileName = dirEntry.path().filename().string();
-        auto fileManager = std::make_unique<SSTableFileManagerImpl>(m_directoryPath, fileName, m_systemContext);
+        auto fileManager = std::make_unique<SSTableManagerImpl>(m_directoryPath, fileName, m_systemContext);
 
-        m_ssTableFileManagers.push_back(std::move(fileManager));
+        m_ssTableManagers.push_back(std::move(fileManager));
     }
 
     return std::nullopt;

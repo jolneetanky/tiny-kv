@@ -2,7 +2,7 @@
 #define LEVEL_MANAGER_IMPL
 
 #include <vector>
-#include "core/sstable_file_manager/sstable_file_manager.h"
+#include "core/sstable_manager/sstable_manager.h"
 #include "types/error.h"
 #include "types/entry.h"
 #include "core/level_manager/level_manager.h"
@@ -15,7 +15,7 @@ class LevelManagerImpl : public LevelManager
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
     std::mutex m_mutex;
-    std::vector<std::unique_ptr<SSTableFileManager>> m_ssTableFileManagers; // brute force, these guys represent files on level 0 for now
+    std::vector<std::unique_ptr<SSTableManager>> m_ssTableManagers; // brute force, these guys represent files on level 0 for now
     SystemContext &m_systemContext;
 
 public:
@@ -24,7 +24,7 @@ public:
     std::optional<Error> writeFile(const std::vector<const Entry *> &entries) override;
     std::optional<Entry> searchKey(const std::string &key) override;
     std::pair<const_iterator, const_iterator> getFiles() override;
-    std::optional<Error> deleteFiles(std::vector<const SSTableFileManager *> files) override;
+    std::optional<Error> deleteFiles(std::vector<const SSTableManager *> files) override;
     // initialize this class with SSTableFileManagers
     std::optional<Error> init() override;
 };
