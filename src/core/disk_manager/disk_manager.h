@@ -3,6 +3,7 @@
 
 #include "types/error.h"
 #include "types/entry.h"
+#include "types/status.h"
 #include <vector>
 
 // This class is the single source of truth for files and levels.

@@ -1,6 +1,7 @@
 #ifndef SYSTEM_CONTEXT
 #define SYSTEM_CONTEXT
 #include <atomic>
+#include "types/types.h"
 
 /*
 Thread-safe file number allocator.
@@ -8,12 +9,12 @@ Thread-safe file number allocator.
 class FileNumberAllocator
 {
 public:
-    uint64_t next()
+    FileNumber next()
     {
         return counter.fetch_add(1, std::memory_order_relaxed); // compiler is free to reorder operations
     }
 
-    void restore(uint64_t max_fil_num_on_disk)
+    void restore(FileNumber max_fil_num_on_disk)
     {
         counter.store(max_fil_num_on_disk);
     }

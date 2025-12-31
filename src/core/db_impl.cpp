@@ -1,5 +1,3 @@
-// This class implements the DB interface.
-// TODO: implement the DB interface.
 #include "db_impl.h"
 #include <iostream>
 #include <optional>

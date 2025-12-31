@@ -314,7 +314,6 @@ std::optional<Error> SSTableManagerImpl::_init()
         return err;
     }
 
-    std::vector<Entry> emptyEntries{};
     for (const auto &entry : m_ssTableFile->entries)
     {
         m_bloomFilter->insert(entry.key);

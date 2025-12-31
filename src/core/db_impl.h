@@ -6,10 +6,10 @@
 #include "contexts/system_context.h"
 #include "core/skip_list/skip_list_impl.h"
 #include "core/wal/wal.h"
-#include "core/disk_manager/disk_manager_impl.h"
+// #include "core/disk_manager/disk_manager_impl.h"
+#include "core/disk_manager/disk_manager_impl_new.h"
 #include "core/mem_table/mem_table_impl.h"
 
-// interface class
 class DbImpl : public DB
 {
 private:

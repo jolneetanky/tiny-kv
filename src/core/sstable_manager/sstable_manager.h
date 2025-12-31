@@ -7,7 +7,10 @@
 #include "types/error.h"
 #include "types/sstable_file.h"
 #include "core/sstable_manager/sstable_metadata.h"
+
 /*
+This class manages an SSTable on disk. It serves as the logical representation of an SSTable on disk.
+
 INVARIANTS:
 1. an SSTableFileManager MUST contain entries. It must also correspond to a file that already exists.
 - if a new SSTableFileManager is to be created that doesn't yet exist, we must pass it a vector of entries to populate the SSTableFile with.
@@ -20,6 +23,7 @@ INVARIANTS:
 
 // can just directly have a comparator that the compactor can call.
 // PROS: if we wanna change the ordering of SSTableFiles, only need to change it here, and comparator stays the same.
+// TODO: make this class obsolete
 
 class SSTableManager
 {

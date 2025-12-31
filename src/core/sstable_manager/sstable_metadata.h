@@ -3,26 +3,25 @@
 
 #include <stdint.h>
 #include "types/timestamp.h"
+#include "types/types.h"
 #include <string>
 
 // This metadata should stay the same regardless of the SSTable implementation.
 struct SSTableMetadata
 {
-    uint64_t file_number;
-    TimestampType timestamp;
-    std::string min_key, max_key;
+    FileNumber m_file_number;
+    TimestampType m_timestamp;
+    std::string m_min_key;
+    std::string m_max_key;
 
     // ordering rules for compaction
     bool operator<(const SSTableMetadata &other) const
     {
-        if (this->file_number != other.file_number)
-        {
-            return this->file_number < other.file_number;
-        }
-
-        // fallback logic (shouldn't happen though, as file_number should be unique)
-        return this->timestamp < other.timestamp;
+        return this->m_file_number < other.m_file_number;
     }
+
+    SSTableMetadata() = default;
+    SSTableMetadata(FileNumber file_number, TimestampType timestamp, std::string min_key, std::string max_key) : m_file_number{file_number}, m_timestamp{timestamp}, m_min_key{min_key}, m_max_key{max_key} {};
 };
 
 #endif
