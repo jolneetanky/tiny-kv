@@ -283,7 +283,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
         thisTables.push_back(ssTable.get());
 
     std::sort(thisTables.begin(), thisTables.end(), [](const SSTable *t1, const SSTable *t2)
-              { return t1->getStartKey() < t2->getEndKey(); });
+              { return t1->getStartKey() < t2->getStartKey(); });
 
     std::vector<const SSTable *>
         otherTables;
@@ -292,7 +292,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
         otherTables.push_back(ssTable.get());
 
     std::sort(otherTables.begin(), otherTables.end(), [](const SSTable *t1, const SSTable *t2)
-              { return t1->getStartKey() < t2->getEndKey(); });
+              { return t1->getStartKey() < t2->getStartKey(); });
 
     int thisTableIdx = 0;  // definitely a valid index
     int otherTableIdx = 0; // NOTE: the `other` level might be empty.
@@ -423,6 +423,8 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
 // TODO: implement
 Status LevelManagerImpl::_mergeOverlappingTables()
 {
+    std::cout << "LevelManagerImpl::_mergeOverlappingTables()" << "\n";
+
     if (m_ssTables.size() == 0)
         return Status::OK();
     // ASSUME: tables are alr in sorted order (by file number)
@@ -437,9 +439,11 @@ Status LevelManagerImpl::_mergeOverlappingTables()
         tables.push_back(ssTable.get());
 
     std::sort(tables.begin(), tables.end(), [](const SSTable *t1, const SSTable *t2)
-              { return t1->getStartKey() < t2->getEndKey(); });
+              { return t1->getStartKey() < t2->getStartKey(); });
 
-    std::string intvStart = tables[0]->getStartKey();
+    // std::string intvStart = tables[0]->getStartKey();
+
+    // 1. MERGE
     std::string intvEnd = tables[0]->getEndKey();
 
     int startIdx = 0;
@@ -465,16 +469,68 @@ Status LevelManagerImpl::_mergeOverlappingTables()
             if (endKey > intvEnd)
                 intvEnd = endKey;
         }
-        i++;
     }
 
     overlappingTables.emplace_back(startIdx, endIdx);
 
+    // 2. MERGE OVERLAPPING TABLES TGT
     // for each overlapping interval, merge the entries, then write a new file, then delete the corresponding tables
     for (auto &[start, end] : overlappingTables)
     {
         if (start == end)
             continue;
+
+        // 1. Collect victim tables
+        std::vector<const SSTable *> victims;
+        for (int i = start; i <= end; ++i)
+            victims.push_back(tables[i]);
+
+        // sort based on ascending order
+        std::sort(victims.begin(), victims.end(), [](const SSTable *t1, const SSTable *t2)
+                  { return t2->meta() < t1->meta(); });
+
+        // 2. Merge entries (newer tables override older ones)
+        // ASSUME: m_ssTables is ordered newest-first
+        std::unordered_set<Entry> merged;
+        std::vector<Entry> mergedEntries;
+
+        for (const SSTable *table : victims)
+        {
+            for (const Entry &e : table->getEntries())
+            {
+                // insert only if key not seen yet
+                // newer tables win because we iterate newest → oldest
+                // if (merged.find(e.key) == merged.end())
+                if (!merged.count(e))
+                {
+                    merged.emplace(e);
+                    mergedEntries.push_back(e);
+                }
+            }
+        }
+
+        // 3. Materialize merged entries
+        // std::vector<Entry> mergedEntries;
+        // mergedEntries.reserve(merged.size());
+
+        // for (auto &[_, entry] : merged)
+        // {
+        //     if (!entry.tombstone) // optional: drop tombstones here
+        //         mergedEntries.push_back(std::move(entry));
+        // }
+
+        // 4. Sort by key (SSTable invariant)
+        // std::sort(mergedEntries.begin(), mergedEntries.end());
+
+        // 5. Create new SSTable
+        Status s = createTable(std::move(mergedEntries));
+        if (!s.ok())
+            return s;
+
+        // 6. Delete old SSTables
+        s = _deleteTables(victims);
+        if (!s.ok())
+            return s;
     }
 
     return Status::OK();

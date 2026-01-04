@@ -102,23 +102,24 @@ TEST_F(DbStorageTest, FlushRespectsDeletes)
 // That's why everytime I modify a value, I flush it.
 // If I want soemthing to appear with the tombstone value on disk, I write the key -> flush -> delete key -> flush.
 
+// varied key order
 TEST_F(DbStorageTest, CompactionPreservesEntries)
 {
     auto db = DbFactory::createDbForTests();
 
-    db->put("a", "1");
-    db->put("b", "2");
+    db->put("b", "1");
+    db->put("a", "2");
     db->put("c", "3");
     EXPECT_TRUE(db->forceFlushForTests().success);
 
-    db->put("d", "4");
+    db->put("f", "4");
     db->put("e", "5");
-    db->put("f", "6");
+    db->put("g", "6");
     EXPECT_TRUE(db->forceFlushForTests().success);
 
     EXPECT_TRUE(db->forceCompactForTests().success);
 
-    EXPECT_EQ(db->get("a").data, "1");
+    EXPECT_EQ(db->get("b").data, "1");
     EXPECT_EQ(db->get("c").data, "3");
     EXPECT_EQ(db->get("e").data, "5");
 }
