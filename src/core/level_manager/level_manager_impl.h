@@ -12,6 +12,14 @@
 // contexts
 #include "../../contexts/system_context.h"
 
+/*
+INVARIANTS (implementation detail that only affects LevelManager but not its API usage. Could be changed depending on how we implement LevelManager.):
+1. m_ssTables always maintains chronological order (newest entry inserted in front), so we know which entry should override which.
+We maintain chronological order when inserting a new SSTable (which doesn't happen often, only during flush / writes. But we assume GETs happen much more frequent than WRITEs so we optimize for more GETs instead.)
+2. Only if `level == 0`, then we allow overlaps.
+3. A LevelManager contains overlapping tables if `m_allowOverlap` == true. Overlaps are enforced during insertion depending on this rule.
+4. After `compactInto()`, `this` becomes an empty level, and `other` is NOT overlapping.
+*/
 class LevelManagerImpl : public LevelManager
 {
 
@@ -24,10 +32,11 @@ public:
     std::optional<Error> deleteFiles(std::vector<const SSTableManager *> files) override;
 
     // reimplemented API
-    std::optional<Entry> getKey(const std::string &key) override;
+    std::optional<Entry> getKey(const std::string &key) const override;
     Status createTable(std::vector<Entry> &&entries) override;
-    std::span<const SSTable *const> getTables() override;
-    Status deleteTables(std::span<const SSTable *>) override; // delete based on tableID for this particular level. We can expose SSTable.getId
+    Status compactInto(LevelManager &other) override;
+    // std::span<const SSTable *const> getTables() override;
+    // Status deleteTables(std::span<const SSTable *>) override; // delete based on tableID for this particular level. We can expose SSTable.getId
 
     std::optional<Error> init() override;
     Status initNew() override;
@@ -38,6 +47,7 @@ private:
     std::mutex m_mutex;
     std::vector<std::unique_ptr<SSTableManager>> m_ssTableManagers; // brute force, these guys represent files on level 0 for now
     SystemContext &m_systemContext;
+    bool m_allowOverlap;
 
     std::vector<std::unique_ptr<SSTable>> m_ssTables;
 
@@ -45,6 +55,8 @@ private:
     std::string _generateSSTableFileName() const;
     // Helper function to get current time
     TimestampType _getTimeNow();
+    Status _mergeOverlappingTables();
+    Status _deleteTables(std::vector<const SSTable *> &tables);
 };
 
 #endif

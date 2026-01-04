@@ -4,8 +4,9 @@
 #include "core/sstable_manager/sstable_reader.h"
 #include <iostream>
 #include <filesystem>
+#include <unordered_set>
 
-LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext) : m_levelNum{levelNum}, m_directoryPath{directoryPath}, m_systemContext{systemContext} {};
+LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext) : m_levelNum{levelNum}, m_directoryPath{directoryPath}, m_systemContext{systemContext}, m_allowOverlap{levelNum == 0} {};
 
 const int &LevelManagerImpl::getLevel()
 {
@@ -179,13 +180,11 @@ std::optional<Error> LevelManagerImpl::init()
 };
 
 // NEW API
-std::optional<Entry> LevelManagerImpl::getKey(const std::string &key)
+std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 {
     std::cout << "[LevelManagerImpl.getKey()] LEVEL " << std::to_string(m_levelNum) << "\n";
 
-    // read from back to front
-    // because we wanna read in LIFO order for level 0
-    // last inserted == newest!
+    // sort SSTables wrt fileNum
     for (const auto &ssTable : m_ssTables)
     {
         if (!ssTable->contains(key))
@@ -211,6 +210,8 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key)
     return std::nullopt;
 };
 
+// time = O(n), because we insert in front
+// but the cost is not significant, as we assume number of SSTables in a level at any one time remains small (thanks to compaction).
 Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
 {
     std::cout << "[LevelManagerImpl.createTable()]" << std::endl;
@@ -223,25 +224,25 @@ Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
     SSTableMetadata metadata = writer.write(full_path, entries, timestamp, file_num);
     std::unique_ptr<SSTable> table = std::make_unique<SSTable>(metadata, std::move(entries));
 
-    m_ssTables.emplace_back(std::move(table)); // calls move ctor `unique_ptr(unique_ptr&&)`, same as if we did push_back. No diff here.
+    m_ssTables.insert(m_ssTables.begin(), std::move(table)); // calls move ctor `unique_ptr(unique_ptr&&)`, same as if we did push_back. No diff here.
 
     return Status::OK();
 };
 
-std::span<const SSTable *const> LevelManagerImpl::getTables()
-{
-}
+// std::span<const SSTable *const> LevelManagerImpl::getTables()
+// {
+// }
 
-Status LevelManagerImpl::deleteTables(std::span<const SSTable *>){
+// Status LevelManagerImpl::deleteTables(std::span<const SSTable *>){
 
-}; // delete based on tableID for this particular level. We can expose SSTable.getId
+// }; // delete based on tableID for this particular level. We can expose SSTable.getId
 
 Status LevelManagerImpl::initNew()
 {
-    std::cout << "[LevelManagerImpl.initNew()]" << "\n";
+    std::cout << "[LevelManagerImpl.initNew()]" << std::endl;
 
     // 1. Look through existing files in the directory for this level, and initialize them
-    for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
+    for (const auto &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
     {
         const std::string &fileName = dirEntry.path().filename().string();
 
@@ -249,12 +250,224 @@ Status LevelManagerImpl::initNew()
         SSTableReader reader;
         std::unique_ptr<SSTable> table = std::make_unique<SSTable>(reader.read(dirEntry.path().string()));
         m_ssTables.emplace_back(std::move(table)); // emplace the rvalue, which calls the move ctor of SSTable.
-
-        // TODO: delete this
-        auto fileManager = std::make_unique<SSTableManagerImpl>(m_directoryPath, fileName, m_systemContext);
-
-        m_ssTableManagers.push_back(std::move(fileManager));
     }
 
-    Status::OK();
+    return Status::OK();
+};
+
+// The level doesn't know if it contains overlapping files or not. It also doesn't know if `other` contains overlapping files.
+// So just in case, it merges overlapping files for both levels.
+// But by right, only level 0 contains overlapping files.
+Status LevelManagerImpl::compactInto(LevelManager &other)
+{
+    if (m_ssTables.size() == 0)
+        return Status::OK();
+
+    // now it's not overlapping
+    // look for overlapping file in the other LevelManager
+    // for now can just search linearly
+
+    LevelManagerImpl &otherImpl = static_cast<LevelManagerImpl &>(other);
+
+    if (this->m_allowOverlap)
+    {
+        this->_mergeOverlappingTables();
+    }
+
+    if (otherImpl.m_allowOverlap)
+    {
+        otherImpl._mergeOverlappingTables();
+    }
+
+    // 1. find the maximum overlapping interval. Store overlapping level `n` tables in `std::vector<const SSTable *> levelNTables`, same for those in level `other`
+    // 2. `vector<Entry> mergedEntries` stores the updated entries, whether older ones have been overwritten.
+    // 3. Add every entry in all `levelNTables` to `mergedEntries`, then add every entry in all `otherTables` to `mergedEntries`, but only if they haven't ben seen
+    // 4. sort `mergedEntries`, then write to level `other`.
+
+    std::vector<const SSTable *> thisTables; // stores pointer to this level's tables, sorted based on start keys
+    thisTables.reserve(this->m_ssTables.size());
+    for (auto &ssTable : this->m_ssTables)
+        thisTables.push_back(ssTable.get());
+
+    std::sort(thisTables.begin(), thisTables.end(), [](const SSTable *t1, const SSTable *t2)
+              { return t1->getStartKey() < t2->getEndKey(); });
+
+    std::vector<const SSTable *>
+        otherTables;
+    otherTables.reserve(otherImpl.m_ssTables.size());
+    for (auto &ssTable : otherImpl.m_ssTables)
+        otherTables.push_back(ssTable.get());
+
+    std::sort(otherTables.begin(), otherTables.end(), [](const SSTable *t1, const SSTable *t2)
+              { return t1->getStartKey() < t2->getEndKey(); });
+
+    int thisTableIdx = 0;  // definitely a valid index
+    int otherTableIdx = 0; // NOTE: the `other` level might be empty.
+    // NOTE: the tables are NOT sorted wrt keys. We cannot assume the same order of start keys!
+    // Currently the SSTables are stored based on when they were inserted!
+
+    std::string intvStart = thisTables[0]->getStartKey();
+    std::string intvEnd = thisTables[0]->getEndKey();
+
+    // INVARIANTS AT THE START OF EACH LOOP:
+    // 1. the current table might overlap with the current interval.
+    // for (auto &thisTable : thisTables)
+    // {
+    //     // if current talbe overlaps with current interval, add it to the list of guys to merge, and continue
+    // }
+
+    // INVARIANTS AT THE START OF EACH LOOP:
+    // we are starting from a new interval.
+    // `thisTableIdx` points to the index of the current table of the new interval.
+    // `otherTableIdx` points to the index of the first other table that is not part of the previous interval, OR to the end index of the other tables.
+    while (thisTableIdx < this->m_ssTables.size())
+    {
+        std::vector<const SSTable *> thisLvlTables;
+        std::vector<const SSTable *> otherLvlTables;
+
+        // GOAL:
+        // adjust `otherTableIdx` until either it points to the end of the other tables,
+        // OR until it points to the first potentially overlapping table (ie. where otherTable.endKey >= thisTable.startTime)
+        // while (otherTableIdx < otherImpl.m_ssTables.size())
+        // {
+        //     auto &otherTable = otherImpl.m_ssTables[otherTableIdx];
+        //     if (otherTable->getEndKey() >= thisTable->getStartKey())
+        //         break;
+        //     otherTableIdx++; // ie. if otherTable.endKey() < thisTable.startKey() so it definitely doens't overlap.
+        // }
+
+        // GOAL:
+        // keep adding tables from this level the interval until there is no more overlap
+        // after adding a table to this level,, update iinterval end, then add all overlapping tables from `otherTables`
+        //
+        // INVARIANTS AT THE START OF EACH LOOP:
+        // 1. `intvEnd` includes the previous table + all other tables that overlapped with that interval.
+        // The current table MAY OR MAY NOT overlap with `intvEnd`.
+        while (thisTableIdx < thisTables.size())
+        {
+            // check `thisTableIdx` if it overlaps
+            // not overlapping if:
+            // table.end < intvStart || intvEnd < table.start
+            // first condition is always false, as every element that was counted into `
+            auto &thisTable = thisTables[thisTableIdx];
+            std::string thisStartKey = thisTable->getStartKey();
+            std::string thisEndKey = thisTable->getEndKey();
+
+            if (thisStartKey > intvEnd)
+            {
+                break;
+            }
+
+            thisLvlTables.emplace_back(thisTable);
+
+            // update interval end
+            if (thisEndKey > intvEnd)
+            {
+                intvEnd = thisEndKey;
+            }
+
+            // now check for overlapping `otherTables`
+            while (otherTableIdx < otherTables.size())
+            {
+                auto &otherTable = otherTables[otherTableIdx];
+                std::string otherStartKey = otherTable->getStartKey();
+                std::string otherEndKey = otherTable->getEndKey();
+
+                if (otherStartKey > intvEnd)
+                {
+                    break;
+                }
+                else if (otherEndKey >= intvStart)
+                {
+                    otherLvlTables.emplace_back(otherTable);
+                    // update interval end
+                    if (otherEndKey > intvEnd)
+                    {
+                        intvEnd = otherEndKey;
+                    }
+                }
+
+                otherTableIdx++;
+            }
+
+            thisTableIdx++;
+        }
+
+        // at the end of this, `thisLvlTables` and `otherLvlTables` should be filled.
+        // first add `thisLvlTables` to `entries`, and store all seen Entry. Then add all other entries in `otherLvlTables` that have not yet been seen.
+        // within `thisLvlTables`, there are no overlapping keys.
+        std::vector<Entry> entries;
+        std::unordered_set<Entry> seen;
+
+        for (const auto &thisTable : thisLvlTables)
+        {
+            for (const auto &entry : thisTable->getEntries())
+            {
+                entries.push_back(entry);
+                seen.insert(entry);
+            }
+        }
+
+        for (const auto &otherTable : otherLvlTables)
+        {
+            for (const auto &entry : otherTable->getEntries())
+            {
+                if (!seen.count(entry))
+                {
+                    entries.push_back(entry);
+                }
+            }
+        }
+
+        thisTableIdx++;
+
+        // delete merged tables, and insert new table into `otherLevel`
+        this->_deleteTables(thisLvlTables);
+        otherImpl._deleteTables(otherLvlTables);
+        otherImpl.createTable(std::move(entries));
+
+        thisLvlTables.clear();
+        otherLvlTables.clear();
+    }
+
+    // delete this level's SSTables; all of them.
+
+    // 4. write every key in level `n` to `mergedEntries`, and also add them to the `seen` set
+    // 5. then for the overlapping files in level `n+1`, iterate through their entries. If `seen.count(entry)`, then don't add to `mergedEntries`.
+    // for (const auto &table : this->m_ssTables)
+    // {
+    //     std::string startKey = table->getStartKey();
+    //     std::string endKey = table->getEndKey();
+
+    //     for (const auto &otherTable : otherImpl.m_ssTables)
+    //     {
+    //         std::string otherStartKey = otherTable->getStartKey();
+    //         std::string otherEndKey = otherTable->getEndKey();
+
+    //         // not overlapping if endKey < otherStartKey || otherEndKey < startKey
+    //         // ie. oveerlapping if (endKey >= otherStartKey) && (startKey <= otherEndKey)
+    //         if (endKey >= otherStartKey && startKey <= otherEndKey)
+    //         {
+    //             // overlap ->
+    //         }
+    //     }
+    // }
+
+    return Status::OK();
+};
+
+// HELPER FUNCTIONS
+// TODO: implement
+Status LevelManagerImpl::_mergeOverlappingTables()
+{
+    // ASSUME: tables are alr in sorted order
+    // group tables with overlapping key ranges tgt
+    // then for each of these groups
+    return Status::OK();
+};
+
+// TODO: implement
+Status LevelManagerImpl::_deleteTables(std::vector<const SSTable *> &tables)
+{
+    return Status::OK();
 };

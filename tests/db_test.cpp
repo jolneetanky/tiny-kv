@@ -43,7 +43,7 @@ TEST_F(DbStorageTest, PutAndGet)
     EXPECT_EQ(res2.data, "world");
 }
 
-// TEST #2(flushes work) : write 3->flush->get
+// TEST #2 (flushes work) : write 3->flush->get
 TEST_F(DbStorageTest, FlushWritesToDisk)
 {
     auto db = DbFactory::createDbForTests();
@@ -59,6 +59,7 @@ TEST_F(DbStorageTest, FlushWritesToDisk)
     EXPECT_EQ(db->get("c").data, "3");
 }
 
+// TEST #3: Flush keeps latest updates
 // this guy fails sometimes
 // REASON: b2b flushes can occur in the same millisecond -> both files have the same timestamp.
 // SOLUTION 1: record timestamps with higher resolution

@@ -3,6 +3,7 @@
 
 #include "core/sstable_manager/sstable_metadata.h"
 #include "types/entry.h"
+#include <span>
 
 /*
 This class manages an SSTable on disk.
@@ -21,6 +22,8 @@ This class represents an SSTable file.
 INVARIANTS:
 1. Assume every SSTable file has no duplicate keys.
 2. Assume this SSTable represents an actual SSTAble file that exists on disk. It is the caller's responsibility to ensure this.
+3. Assume the SSTable contains at least one entry. UB otherwise for the methods of this SSTable.
+4. Assume the entries are always sorted.
 */
 class SSTable
 {
@@ -33,6 +36,10 @@ public:
     SSTableMetadata meta() const; // returns a copy of SSTableMetadata so this class itself remains unchanged.
     bool contains(std::string key) const;
     std::optional<Entry> get(std::string key) const;
+    std::string getStartKey() const;
+    std::string getEndKey() const;
+    std::size_t getSize() const; // returns the number of entries in this table.
+    std::span<const Entry> getEntries() const;
 
     // delete copy ctor and copy assignment operator
     // we don't want an SSTable to be copied.

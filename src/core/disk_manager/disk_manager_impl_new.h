@@ -35,10 +35,6 @@ private:
 
     std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 
-    std::vector<std::vector<const SSTable *>> _groupOverlappingTables(std::span<const SSTable *const> &ssTables) const;
-
-    // TODO: implement this
-    Status _mergeOverlappingTables(int lvl);
     // TODO: implement this
     Status _compactLN(int n);
     Status _createDirectoryIfNotExists(std::string dirPath);

@@ -4,6 +4,7 @@
 #include <string>
 #include <ostream>
 #include "timestamp.h"
+#include <functional>
 
 struct Entry
 {
@@ -31,6 +32,19 @@ inline std::ostream &operator<<(std::ostream &os, const Entry &e)
 {
     os << "(" << e.key << ", " << e.val << ", " << (e.tombstone == 1 ? "true" : "false") << ")";
     return os;
+}
+
+// define `std::hash<Entry>` for custom comparator
+namespace std
+{
+    template <> // tell compiler that this is a specialization of an existing template (ie. `std::hash<>`)
+    struct hash<Entry>
+    {
+        size_t operator()(const Entry &e) const noexcept
+        {
+            return std::hash<std::string>{}(e.key);
+        }
+    };
 }
 
 #endif

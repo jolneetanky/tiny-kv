@@ -69,13 +69,25 @@ std::optional<Entry> DiskManagerImpl::get(const std::string &key) const
 
 std::optional<Error> DiskManagerImpl::compact()
 {
+    // merge overlapping entries in L0
+    // merge level `i` with level `i+1`, for all 0 <= i <= n-1
+    if (m_levelManagers.size() == 0)
+        return std::nullopt;
+
+    for (int lvl = 0; lvl < m_levelManagers.size() - 1; lvl++)
+    {
+        m_levelManagers[lvl]->compactInto(*m_levelManagers[lvl + 1]);
+        // 1. For every SSTable in this levelManager, pass it to `levelManager[lvl+1]`, and ask it to overwrite its own overlapping file with these entries
+        // 2. Even better, do something like `levelManager[lvl].compactInto(levelManager[lvl+1])`
+    }
+
     return std::nullopt;
 };
 
 // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
 std::optional<Error> DiskManagerImpl::initLevels()
 {
-    std::cout << "[DiskManagerImpl::initLevels()]" << "\n";
+    std::cout << "[DiskManagerImpl::initLevels()]" << std::endl;
 
     const std::string &basePath = m_basePath;
     const std::string &level0Path = basePath + "/level-0";
@@ -86,7 +98,7 @@ std::optional<Error> DiskManagerImpl::initLevels()
     {
         if (std::filesystem::create_directories(level0Path))
         {
-            std::cout << "[DiskManagerImpl::initLevels()] Successfully created directory " << level0Path << "\n";
+            std::cout << "[DiskManagerImpl::initLevels()] Successfully created directory " << level0Path << std::endl;
         }
     }
     catch (const std::filesystem::filesystem_error &e)

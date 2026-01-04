@@ -1,7 +1,10 @@
 #include "core/sstable_manager/sstable.h"
 #include <iostream>
 
-SSTable::SSTable(SSTableMetadata meta, std::vector<Entry> &&entries) : m_meta{meta}, m_entries{std::move(entries)} {};
+SSTable::SSTable(SSTableMetadata meta, std::vector<Entry> &&entries) : m_meta{meta}, m_entries{std::move(entries)}
+{
+    std::sort(m_entries.begin(), m_entries.end());
+};
 
 SSTableMetadata SSTable::meta() const
 {
@@ -59,3 +62,23 @@ bool SSTable::contains(std::string key) const
 {
     return true;
 };
+
+std::string SSTable::getStartKey() const
+{
+    return m_entries[0].key;
+};
+
+std::string SSTable::getEndKey() const
+{
+    return m_entries[m_entries.size() - 1].key;
+};
+
+std::size_t SSTable::getSize() const
+{
+    return m_entries.size();
+}
+
+std::span<const Entry> SSTable::getEntries() const
+{
+    return m_entries;
+}
