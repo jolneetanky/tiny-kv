@@ -24,6 +24,7 @@ public:
 
     std::optional<Error> compact() override;
 
+    // initializes the level managers based on existing folders on disk. Creates all file managers up to MAX_LEVEL if there's nothing
     std::optional<Error> initLevels(); // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
 
 private:

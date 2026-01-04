@@ -6,8 +6,9 @@
 class Status
 {
 public:
+    Status() : m_code{Code::kOk}, m_msg{"OK"} {};
     static Status OK() { return Status(Code::kOk, "OK"); }; // factory function
-    static Status Error(std::string msg) { return Status(Code::kError, msg); };
+    static Status Error(std::string msg) { return Status(Code::kError, std::move(msg)); };
 
     bool ok() const { return m_code == Code::kOk; }; // if !ok then it's an error
     std::string to_string() const { return m_msg; };
