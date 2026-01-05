@@ -124,6 +124,8 @@ TEST_F(DbStorageTest, CompactionPreservesEntries)
     EXPECT_EQ(db->get("e").data, "5");
 }
 
+// Because both keys are are they same, they lie in the same key range
+// So this test makes sure that the latest overwrite is reflected.
 TEST_F(DbStorageTest, CompactionKeepsLatestOverwrite)
 {
     auto db = DbFactory::createDbForTests();

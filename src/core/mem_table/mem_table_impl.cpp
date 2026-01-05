@@ -1,7 +1,7 @@
 #include "core/mem_table/mem_table_impl.h"
 #include <optional>
 
-MemTableImpl::MemTableImpl(int size, SkipList &skipList, DiskManager &diskManager, WAL &wal, SystemContext &systemContext) : m_size{size}, m_skiplist{skipList}, m_diskManager{diskManager}, m_wal{wal}, m_systemContext{systemContext} {}; // constructor
+MemTableImpl::MemTableImpl(int size, SkipList &skipList, StorageManager &storageManager, WAL &wal, SystemContext &systemContext) : m_size{size}, m_skiplist{skipList}, m_storageManager{storageManager}, m_wal{wal}, m_systemContext{systemContext} {}; // constructor
 
 std::optional<Error> MemTableImpl::put(const std::string &key, const std::string &val)
 {
@@ -60,7 +60,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key)
     std::cout << "[MemTableImpl.del()]" << std::endl;
 
     // TODO: check that entry is either in memtable OR in disk
-    if (!get(key) && !m_diskManager.get(key))
+    if (!get(key) && !m_storageManager.get(key))
     {
         std::cout << "[MemTableImpl.del()] Cannot DELETE: key does not exist" << std::endl;
         return Error{"Cannot DELETE: key does not exist"};
@@ -136,7 +136,7 @@ std::optional<Error> MemTableImpl::flushToDisk()
     }
 
     // write to file
-    std::optional<Error> errOpt{m_diskManager.write(entryPtrs, 0)}; // writes a new file to level 0.
+    std::optional<Error> errOpt{m_storageManager.write(entryPtrs, 0)}; // writes a new file to level 0.
 
     if (errOpt)
     {

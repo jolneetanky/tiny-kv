@@ -38,104 +38,6 @@ TimestampType LevelManagerImpl::_getTimeNow()
     return timestamp;
 }
 
-std::optional<Error> LevelManagerImpl::writeFile(const std::vector<const Entry *> &entryPtrs)
-{
-    std::cout << "[LevelManagerImpl.writeFile()]" << std::endl;
-
-    SSTableWriter writer;
-    std::string full_path = m_directoryPath + _generateSSTableFileName();
-    TimestampType timestamp = _getTimeNow();
-    FileNumber file_num = m_systemContext.file_number_allocator.next();
-
-    // std::vector<Entry> entries;
-    // entries.reserve(entryPtrs.size());
-    // for (const auto &ptr : entryPtrs)
-    //     entries.emplace_back(ptr);
-
-    // SSTableMetadata metadata = writer.write(full_path, entries, timestamp, file_num);
-
-    // m_ss_tables.emplace_back(metadata);
-
-    // construct an SSTableFileManager, initialized with entries
-    // they are automatically written to disk in the ctor (as per semantics of SSTableFileManager)
-    m_ssTableManagers.push_back(std::make_unique<SSTableManagerImpl>(m_directoryPath, m_systemContext, entryPtrs));
-
-    return std::nullopt;
-};
-
-std::optional<Entry> LevelManagerImpl::searchKey(const std::string &key)
-{
-    std::cout << "[LevelManagerImpl.searchKey()] LEVEL " << std::to_string(m_levelNum) << "\n";
-
-    // read from back to front
-    // because we wanna read in LIFO order for level 0
-    // last inserted == newest!
-    for (int i = m_ssTableManagers.size() - 1; i >= 0; i--)
-    {
-        const auto &fileManager{m_ssTableManagers[i]};
-
-        if (!fileManager->contains(key))
-        {
-            continue;
-        }
-
-        std::optional<Entry> entryOpt{fileManager->get(key)};
-        if (entryOpt)
-        {
-            std::cout << "[LevelManagerImpl.searchKey()] FOUND" << "\n";
-            return entryOpt;
-        }
-
-        // in the latest entry, key has been deleted. So can stop searching alr
-        if (entryOpt && entryOpt->tombstone)
-        {
-            break;
-        }
-    }
-
-    std::cout << "[LevelManagerImpl.searchKey()] key does not exist on disk" << "\n";
-    return std::nullopt;
-};
-
-std::pair<LevelManagerImpl::const_iterator, LevelManagerImpl::const_iterator> LevelManagerImpl::getFiles()
-{
-    std::cout << "LevelManagerImpl.getFiles()]" << "\n";
-    return {m_ssTableManagers.begin(), m_ssTableManagers.end()};
-};
-
-std::optional<Error> LevelManagerImpl::deleteFiles(std::vector<const SSTableManager *> files)
-{
-    std::cout << "[LevelManagerImpl.deleteFiles()]" << "\n";
-
-    for (const auto &file : files)
-    {
-        std::string fullPath = file->getFullPath();
-
-        // 1. Delete file from disk
-        if (!std::filesystem::remove(fullPath))
-        {
-            return Error{"Failed to delete file"};
-        }
-
-        // 2. Remove the file from m_fileManagers
-        auto it = std::remove_if(
-            m_ssTableManagers.begin(),
-            m_ssTableManagers.end(),
-            [&](const std::unique_ptr<SSTableManager> &ptr)
-            {
-                // remove if path of file matches that that we are tryna remove
-                return ptr && ptr->getFullPath() == fullPath;
-            });
-
-        if (it != m_ssTableManagers.end())
-        {
-            m_ssTableManagers.erase(it, m_ssTableManagers.end());
-        }
-    }
-
-    return std::nullopt;
-};
-
 /*
 1. Creates the directory for this level if it doesn't exist
 2. Look through existing files (ie. SSTables) in this level, loads their manager into memory
@@ -218,7 +120,7 @@ Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
     std::cout << "[LevelManagerImpl.createTable()]" << std::endl;
 
     SSTableWriter writer;
-    std::string full_path = m_directoryPath + _generateSSTableFileName();
+    std::string full_path = m_directoryPath + "/" + _generateSSTableFileName();
     TimestampType timestamp = _getTimeNow();
     FileNumber file_num = m_systemContext.file_number_allocator.next();
 
@@ -312,20 +214,9 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
         std::vector<const SSTable *> otherLvlTables;
 
         // GOAL:
-        // adjust `otherTableIdx` until either it points to the end of the other tables,
-        // OR until it points to the first potentially overlapping table (ie. where otherTable.endKey >= thisTable.startTime)
-        // while (otherTableIdx < otherImpl.m_ssTables.size())
-        // {
-        //     auto &otherTable = otherImpl.m_ssTables[otherTableIdx];
-        //     if (otherTable->getEndKey() >= thisTable->getStartKey())
-        //         break;
-        //     otherTableIdx++; // ie. if otherTable.endKey() < thisTable.startKey() so it definitely doens't overlap.
-        // }
-
-        // GOAL:
         // keep adding tables from this level the interval until there is no more overlap
         // after adding a table to this level,, update iinterval end, then add all overlapping tables from `otherTables`
-        //
+
         // INVARIANTS AT THE START OF EACH LOOP:
         // 1. `intvEnd` includes the previous table + all other tables that overlapped with that interval.
         // The current table MAY OR MAY NOT overlap with `intvEnd`.
@@ -334,7 +225,8 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
             // check `thisTableIdx` if it overlaps
             // not overlapping if:
             // table.end < intvStart || intvEnd < table.start
-            // first condition is always false, as every element that was counted into `
+            // first condition is always false, as we sorted `thisTables` based on start key, and `intvStart` was from a previous table of this level, OR earlier than that
+            // meaning `table.end` >= intvStart definitely.
             auto &thisTable = thisTables[thisTableIdx];
             std::string thisStartKey = thisTable->getStartKey();
             std::string thisEndKey = thisTable->getEndKey();
@@ -509,25 +401,12 @@ Status LevelManagerImpl::_mergeOverlappingTables()
             }
         }
 
-        // 3. Materialize merged entries
-        // std::vector<Entry> mergedEntries;
-        // mergedEntries.reserve(merged.size());
-
-        // for (auto &[_, entry] : merged)
-        // {
-        //     if (!entry.tombstone) // optional: drop tombstones here
-        //         mergedEntries.push_back(std::move(entry));
-        // }
-
-        // 4. Sort by key (SSTable invariant)
-        // std::sort(mergedEntries.begin(), mergedEntries.end());
-
-        // 5. Create new SSTable
+        // 4. Create new SSTable
         Status s = createTable(std::move(mergedEntries));
         if (!s.ok())
             return s;
 
-        // 6. Delete old SSTables
+        // 5. Delete old SSTables
         s = _deleteTables(victims);
         if (!s.ok())
             return s;

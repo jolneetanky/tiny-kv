@@ -1,7 +1,6 @@
 #include "db_factory.h"
 #include "contexts/system_context.h"
-// #include "core/disk_manager/disk_manager_impl.h"
-#include "core/disk_manager/disk_manager_impl_new.h"
+#include "core/storage_manager/storage_manager_impl.h"
 #include "core/skip_list/skip_list_impl.h"
 #include "core/wal/wal.h"
 #include "core/mem_table/mem_table_impl.h"
@@ -10,16 +9,16 @@
 std::unique_ptr<DbImpl> DbFactory::createDbWithConfig(const DbFactoryConfig &config)
 {
     auto systemCtx = std::make_unique<SystemContext>();
-    auto diskManagerImpl = std::make_unique<DiskManagerImpl>(*systemCtx, config.sstableDirectory);
+    auto storageManagerImpl = std::make_unique<StorageManagerImpl>(*systemCtx, config.sstableDirectory);
     auto skipListImpl = std::make_unique<SkipListImpl>();
     auto wal = std::make_unique<WAL>(config.walId, config.walDirectory);
-    auto memTableImpl = std::make_unique<MemTableImpl>(config.memtableCapacity, *skipListImpl, *diskManagerImpl, *wal, *systemCtx);
+    auto memTableImpl = std::make_unique<MemTableImpl>(config.memtableCapacity, *skipListImpl, *storageManagerImpl, *wal, *systemCtx);
 
     return std::make_unique<DbImpl>(
         std::move(systemCtx),
         std::move(skipListImpl),
         std::move(wal),
-        std::move(diskManagerImpl),
+        std::move(storageManagerImpl),
         std::move(memTableImpl));
 }
 

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "core/db.h"
-#include "core/disk_manager/disk_manager_impl.h"
+#include "core/storage_manager/storage_manager_impl.h"
 
 // This class handles commands in the form of (cmd, args).
 // It is the API through which users communicate with the system.

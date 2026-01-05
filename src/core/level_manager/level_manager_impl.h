@@ -26,17 +26,11 @@ class LevelManagerImpl : public LevelManager
 public:
     LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext); // should be tied to an existing level directory. TODO: throw error if the directory doesn't exist before this is called
     const int &getLevel() override;
-    std::optional<Error> writeFile(const std::vector<const Entry *> &entries) override;
-    std::optional<Entry> searchKey(const std::string &key) override;
-    std::pair<const_iterator, const_iterator> getFiles() override;
-    std::optional<Error> deleteFiles(std::vector<const SSTableManager *> files) override;
 
     // reimplemented API
     std::optional<Entry> getKey(const std::string &key) const override;
     Status createTable(std::vector<Entry> &&entries) override;
     Status compactInto(LevelManager &other) override;
-    // std::span<const SSTable *const> getTables() override;
-    // Status deleteTables(std::span<const SSTable *>) override; // delete based on tableID for this particular level. We can expose SSTable.getId
 
     std::optional<Error> init() override;
     Status initNew() override;

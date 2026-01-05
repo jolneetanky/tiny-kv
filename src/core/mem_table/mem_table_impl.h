@@ -5,7 +5,7 @@
 #include "core/mem_table/mem_table.h"
 #include "core/skip_list/skip_list.h"
 #include "types/entry.h"
-#include "core/disk_manager/disk_manager.h"
+#include "core/storage_manager/storage_manager.h"
 #include "core/wal/wal.h"
 #include "contexts/system_context.h"
 
@@ -17,14 +17,14 @@ private:
     int m_size;
     bool m_readOnly = false;
     SkipList &m_skiplist;
-    DiskManager &m_diskManager;
+    StorageManager &m_storageManager;
     WAL &m_wal;
     SystemContext &m_systemContext;
 
     bool isReadOnly() const;
 
 public:
-    MemTableImpl(int size, SkipList &skipList, DiskManager &diskManager, WAL &wal, SystemContext &m_systemContext); // constructor
+    MemTableImpl(int size, SkipList &skipList, StorageManager &storageManager, WAL &wal, SystemContext &m_systemContext); // constructor
     std::optional<Error> put(const std::string &key, const std::string &val) override;
     std::optional<Entry> get(const std::string &key) const override;
     std::optional<Error> del(const std::string &key) override;

@@ -6,7 +6,7 @@
 #include <vector>
 #include "types/entry.h"
 #include "types/sstable_file.h"
-#include "core/disk_manager/disk_manager.h"
+#include "core/storage_manager/storage_manager.h"
 #include "core/sstable_manager/sstable_manager.h"
 #include "core/level_manager/level_manager.h"
 
@@ -14,10 +14,10 @@
 #include "contexts/system_context.h"
 
 // actly this can be more like LevelManager
-class DiskManagerImpl : public DiskManager
+class StorageManagerImpl : public StorageManager
 {
 public:
-    DiskManagerImpl(SystemContext &systemContext, std::string basePath = "./sstables");
+    StorageManagerImpl(SystemContext &systemContext, std::string basePath = "./sstables");
     std::optional<Error> write(const std::vector<const Entry *> &entries, int level) override;
 
     std::optional<Entry> get(const std::string &key) const override;

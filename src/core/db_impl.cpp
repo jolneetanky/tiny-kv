@@ -6,9 +6,9 @@
 DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
                std::unique_ptr<SkipListImpl> skip,
                std::unique_ptr<WAL> wal,
-               std::unique_ptr<DiskManagerImpl> dm,
+               std::unique_ptr<StorageManagerImpl> sm,
                std::unique_ptr<MemTableImpl> mem)
-    : m_systemCtx(std::move(ctx)), m_skipList(std::move(skip)), m_wal(std::move(wal)), m_diskManager(std::move(dm)), m_memTable(std::move(mem))
+    : m_systemCtx(std::move(ctx)), m_skipList(std::move(skip)), m_wal(std::move(wal)), m_storageManager(std::move(sm)), m_memTable(std::move(mem))
 {
 }
 
@@ -35,7 +35,7 @@ Response<std::string> DbImpl::get(std::string key) const
 
     if (!optEntry)
     {
-        optEntry = (*m_diskManager).get(key);
+        optEntry = (*m_storageManager).get(key);
 
         if (!optEntry)
         {
@@ -62,7 +62,7 @@ Response<void> DbImpl::del(std::string key)
 
 Response<void> DbImpl::forceCompactForTests()
 {
-    m_diskManager->compact();
+    m_storageManager->compact();
     return Response<void>(true, "Successfully compacted DB");
 }
 
