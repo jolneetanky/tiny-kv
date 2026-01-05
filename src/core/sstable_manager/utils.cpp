@@ -1,12 +1,10 @@
-#include "core/sstable_file_manager/sstable_file_manager_impl.h"
-// #include <filesystem>
+#include "core/sstable_manager/sstable_manager_impl.h"
 #include <iostream>
-// #include <chrono> // for std::chrono::system_clock
-// #include <arpa/inet.h>
 #include <fstream>
 
 // utils
-std::string SSTableFileManagerImpl::_generateSSTableFileName() const
+// generates a unique SSTable file name.
+std::string SSTableManagerImpl::_generateSSTableFileName() const
 {
     static std::atomic<uint64_t> counter{0};
 
@@ -20,7 +18,7 @@ std::string SSTableFileManagerImpl::_generateSSTableFileName() const
     return "table-" + std::to_string(uniqueId);
 }
 
-bool SSTableFileManagerImpl::_createFileIfNotExists(const std::string &fullPath) const
+bool SSTableManagerImpl::_createFileIfNotExists(const std::string &fullPath) const
 {
     std::filesystem::path fsPath{fullPath};
     std::filesystem::create_directories(fsPath.parent_path());
@@ -35,7 +33,7 @@ bool SSTableFileManagerImpl::_createFileIfNotExists(const std::string &fullPath)
 }
 
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
-std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const
+std::string SSTableManagerImpl::_serializeEntry(const Entry &entry) const
 {
     // std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
 
@@ -68,7 +66,7 @@ std::string SSTableFileManagerImpl::_serializeEntry(const Entry &entry) const
 // deserialized the serialized binary string
 // data: pointer to a `char` array which we are deserializing. Ie `data` is the base address of some char array
 // `size`: size of data we are deserializing
-std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data, size_t size, size_t &bytesRead) const
+std::optional<Entry> SSTableManagerImpl::_deserializeEntry(const char *data, size_t size, size_t &bytesRead) const
 {
     Entry entry;
     size_t pos = 0;
@@ -77,7 +75,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
     if (pos + 4 > size)
     {
         std::string msg{"Buffer too small for key length"};
-        std::cout << "[SSTableFileManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
+        std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         return std::nullopt;
     }
     uint32_t keyLenNetwork;
@@ -89,7 +87,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
     if (pos + keyLen > size)
     {
         std::string msg{"Buffer too small for key"};
-        std::cout << "[SSTableFileManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
+        std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         return std::nullopt;
     };
     entry.key.assign(data + pos, keyLen);
@@ -99,7 +97,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
     if (pos + 4 > size)
     {
         std::string msg{"Buffer too small for value length"};
-        std::cout << "[SSTableFileManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
+        std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         return std::nullopt;
     }
 
@@ -112,7 +110,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
     if (pos + valLen > size)
     {
         std::string msg{"Buffer too small for value"};
-        std::cout << "[SSTableFileManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
+        std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         return std::nullopt;
     }
     entry.val.assign(data + pos, valLen);
@@ -122,7 +120,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
     if (pos + 1 > size)
     {
         std::string msg{"Buffer too small for tombstone"};
-        std::cout << "[SSTableFileManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
+        std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         return std::nullopt;
     }
 
@@ -134,7 +132,7 @@ std::optional<Entry> SSTableFileManagerImpl::_deserializeEntry(const char *data,
 }
 
 // Writes the entire content of a binary string to a file
-bool SSTableFileManagerImpl::_writeBinaryToFile(const std::string &path, const std::string &data)
+bool SSTableManagerImpl::_writeBinaryToFile(const std::string &path, const std::string &data)
 {
     // create parent directories in path if needed
     std::filesystem::path fsPath{path};
@@ -151,7 +149,7 @@ bool SSTableFileManagerImpl::_writeBinaryToFile(const std::string &path, const s
 }
 
 // Reads entire binary file into a string buffer
-bool SSTableFileManagerImpl::_readBinaryFromFile(const std::string &filename, std::string &outData) const
+bool SSTableManagerImpl::_readBinaryFromFile(const std::string &filename, std::string &outData) const
 {
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile)
@@ -175,7 +173,7 @@ bool SSTableFileManagerImpl::_readBinaryFromFile(const std::string &filename, st
     return true;
 }
 
-TimestampType SSTableFileManagerImpl::_getTimeNow()
+TimestampType SSTableManagerImpl::_getTimeNow()
 {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -186,7 +184,7 @@ TimestampType SSTableFileManagerImpl::_getTimeNow()
 }
 
 // reads entries from a particular SSTable and parses into an SSTableFile
-std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string filename) const
+std::optional<SSTableFile> SSTableManagerImpl::_decode(std::string filename) const
 {
     // read binary from file and store in a string buffer
     std::cout << "[SSTableFileManager.decode()]" << std::endl;
@@ -240,9 +238,9 @@ std::optional<SSTableFile> SSTableFileManagerImpl::_decode(std::string filename)
 };
 
 //  Decodes the entires in a files and reads them to memory.
-std::optional<Error> SSTableFileManagerImpl::_readFileToMemory()
+std::optional<Error> SSTableManagerImpl::_readFileToMemory()
 {
-    // std::cout << "SSTableFileManagerImpl.readFileToMemory()" << "\n";
+    // std::cout << "SSTableManagerImpl.readFileToMemory()" << "\n";
 
     // if the sstable file is not yet read to memory, read it to memory
     if (!m_ssTableFile)
@@ -250,7 +248,7 @@ std::optional<Error> SSTableFileManagerImpl::_readFileToMemory()
         std::optional<SSTableFile> ssTableFileOpt{_decode(m_fullPath)};
         if (!ssTableFileOpt)
         {
-            std::cerr << "SSTableFileManagerImpl.readFileToMemory() Failed to read file to memory" << "\n";
+            std::cerr << "SSTableManagerImpl.readFileToMemory() Failed to read file to memory" << "\n";
             return Error{"Failed to read file to memory"};
         }
 
@@ -267,7 +265,7 @@ std::optional<Error> SSTableFileManagerImpl::_readFileToMemory()
 ASSUMPTIONS:
 1. `fname` is the name of a file that already exists.
 */
-std::optional<Error> SSTableFileManagerImpl::_writeEntriesToFile(const std::vector<const Entry *> &entryPtrs, const std::string &fname)
+std::optional<Error> SSTableManagerImpl::_writeEntriesToFile(const std::vector<const Entry *> &entryPtrs, const std::string &fname)
 {
     std::cout << "[SSTableFileManager._writeEntriesToFile()]" << std::endl;
 
@@ -306,17 +304,16 @@ std::optional<Error> SSTableFileManagerImpl::_writeEntriesToFile(const std::vect
 /*
 Reads entries to memory.
 */
-std::optional<Error> SSTableFileManagerImpl::_init()
+std::optional<Error> SSTableManagerImpl::_init()
 {
-    std::cout << "[SSTableFileManagerImpl.init()]" << std::endl;
+    std::cout << "[SSTableManagerImpl.init()]" << std::endl;
 
     if (const auto &err = _readFileToMemory())
     {
-        std::cout << "[SSTableFileManagerImpl.init()] Failed to initialize file" << std::endl;
+        std::cout << "[SSTableManagerImpl.init()] Failed to initialize file" << std::endl;
         return err;
     }
 
-    std::vector<Entry> emptyEntries{};
     for (const auto &entry : m_ssTableFile->entries)
     {
         m_bloomFilter->insert(entry.key);
@@ -324,6 +321,6 @@ std::optional<Error> SSTableFileManagerImpl::_init()
 
     m_initialized = true;
 
-    std::cout << "[SSTableFileManagerImpl.init()] end" << std::endl;
+    std::cout << "[SSTableManagerImpl.init()] end" << std::endl;
     return std::nullopt;
 };

@@ -5,6 +5,7 @@
 #include <iostream>
 #include "api/response.h"
 
+// This class is the external, client-facing API.
 class DB
 {
 public:
