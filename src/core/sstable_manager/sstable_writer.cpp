@@ -101,28 +101,12 @@ SSTableMetadata SSTableWriter::write(const std::string &fname, std::vector<Entry
     // sort entries (assume ascending)
     std::sort(entries.begin(), entries.end());
 
-    // TimestampType timestamp{_getTimeNow()};
-
-    // std::vector<Entry> entries;
-
     std::string writeData;
 
     for (const auto &entry : entries)
     {
         writeData += _serializeEntry(entry);
     }
-
-    // for (const auto &entryPtr : entryPtrs)
-    // {
-    //     if (entryPtr == nullptr)
-    //     {
-    //         std::cerr << "[SSTableFileManager.writeEntriesToFile()] Failed to write: Null entry pointer in entries!\n";
-    //         return Error{"Failed to write to SSTable"};
-    //     }
-
-    //     entries.push_back(*entryPtr);            // copied into vector
-    //     writeData += _serializeEntry(*entryPtr); // serialized into binary
-    // }
 
     writeData.append(reinterpret_cast<const char *>(&timestamp), sizeof(timestamp));
     writeData.append(reinterpret_cast<const char *>(&file_num), sizeof(file_num));
@@ -131,8 +115,6 @@ SSTableMetadata SSTableWriter::write(const std::string &fname, std::vector<Entry
     {
         throw std::runtime_error("SSTableWriter::write(): Failed to write SSTable");
     }
-
-    // m_ssTableFile = std::make_unique<SSTableFile>(entries, timestamp); // values all copied in, not referenced
 
     std::cout << "[SSTableFileManager._writeEntriesToFile()] Successfully WRITE SSTable to path " << fname << "\n";
 
