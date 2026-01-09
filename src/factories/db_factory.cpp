@@ -9,7 +9,7 @@
 std::unique_ptr<DbImpl> DbFactory::createDbWithConfig(const DbFactoryConfig &config)
 {
     auto systemCtx = std::make_unique<SystemContext>();
-    auto storageManagerImpl = std::make_unique<StorageManagerImpl>(*systemCtx, config.sstableDirectory);
+    auto storageManagerImpl = std::make_unique<StorageManagerImpl>(*systemCtx, config.sstableDirectory, config.maxLevels);
     auto skipListImpl = std::make_unique<SkipListImpl>();
     auto wal = std::make_unique<WAL>(config.walId, config.walDirectory);
     auto memTableImpl = std::make_unique<MemTableImpl>(config.memtableCapacity, *skipListImpl, *storageManagerImpl, *wal, *systemCtx);

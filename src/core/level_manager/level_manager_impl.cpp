@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <unordered_set>
 #include <fstream>
+#include "common/log.h"
 
 LevelManagerImpl::LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext) : m_levelNum{levelNum}, m_directoryPath{directoryPath}, m_systemContext{systemContext}, m_allowOverlap{levelNum == 0} {};
 
@@ -44,7 +45,7 @@ TimestampType LevelManagerImpl::_getTimeNow()
 */
 std::optional<Error> LevelManagerImpl::init()
 {
-    std::cout << "[LevelManagerImpl.init()]" << "\n";
+    TINYKV_LOG("[LevelManagerImpl.init()]");
 
     // 1. Ceate directory if it doesn't exist
     if (!std::filesystem::exists(m_directoryPath))
@@ -55,7 +56,7 @@ std::optional<Error> LevelManagerImpl::init()
             {
                 return Error{"Failed to create directory: " + m_directoryPath};
             }
-            std::cout << "[LevelManagerImpl.init()] Created directory: " << m_directoryPath << "\n";
+            TINYKV_LOG("[LevelManagerImpl.init()] Created directory: " << m_directoryPath);
         }
         catch (const std::filesystem::filesystem_error &e)
         {
@@ -85,7 +86,7 @@ std::optional<Error> LevelManagerImpl::init()
 // NEW API
 std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 {
-    std::cout << "[LevelManagerImpl.getKey()] LEVEL " << std::to_string(m_levelNum) << "\n";
+    TINYKV_LOG("[LevelManagerImpl.getKey()] LEVEL " << std::to_string(m_levelNum));
 
     // sort SSTables wrt fileNum
     for (const auto &ssTable : m_ssTables)
@@ -98,7 +99,7 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
         std::optional<Entry> entryOpt{ssTable->get(key)};
         if (entryOpt)
         {
-            std::cout << "[LevelManagerImpl.getKey()] FOUND" << "\n";
+            TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND");
             return entryOpt;
         }
 
@@ -109,7 +110,7 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
         }
     }
 
-    std::cout << "[LevelManagerImpl.getKey()] key does not exist on disk" << "\n";
+    TINYKV_LOG("[LevelManagerImpl.getKey()] key does not exist on disk");
     return std::nullopt;
 };
 
@@ -117,7 +118,7 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 // but the cost is not significant, as we assume number of SSTables in a level at any one time remains small (thanks to compaction).
 Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
 {
-    std::cout << "[LevelManagerImpl.createTable()]" << std::endl;
+    TINYKV_LOG("[LevelManagerImpl.createTable()]");
 
     SSTableWriter writer;
     std::string full_path = m_directoryPath + "/" + _generateSSTableFileName();
@@ -134,7 +135,7 @@ Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
 
 Status LevelManagerImpl::initNew()
 {
-    std::cout << "[LevelManagerImpl.initNew()]" << std::endl;
+    TINYKV_LOG("[LevelManagerImpl.initNew()]");
 
     // 1. Look through existing files in the directory for this level, and initialize them
     for (const auto &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
@@ -184,9 +185,11 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     for (auto &ssTable : this->m_ssTables)
         thisTables.push_back(ssTable.get());
 
+    // sort tables based on start key
     std::sort(thisTables.begin(), thisTables.end(), [](const SSTable *t1, const SSTable *t2)
               { return t1->getStartKey() < t2->getStartKey(); });
 
+    // If the `other` level has no files, then this is empty
     std::vector<const SSTable *>
         otherTables;
     otherTables.reserve(otherImpl.m_ssTables.size());
@@ -196,6 +199,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     std::sort(otherTables.begin(), otherTables.end(), [](const SSTable *t1, const SSTable *t2)
               { return t1->getStartKey() < t2->getStartKey(); });
 
+    // merge tables in this level with tables in `otherLevel` that have overlapping key ranges.
     int thisTableIdx = 0;  // definitely a valid index
     int otherTableIdx = 0; // NOTE: the `other` level might be empty.
     // NOTE: the tables are NOT sorted wrt keys. We cannot assume the same order of start keys!
@@ -208,6 +212,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     // we are starting from a new interval.
     // `thisTableIdx` points to the index of the current table of the new interval.
     // `otherTableIdx` points to the index of the first other table that is not part of the previous interval, OR to the end index of the other tables.
+    //
     while (thisTableIdx < this->m_ssTables.size())
     {
         std::vector<const SSTable *> thisLvlTables;
@@ -220,6 +225,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
         // INVARIANTS AT THE START OF EACH LOOP:
         // 1. `intvEnd` includes the previous table + all other tables that overlapped with that interval.
         // The current table MAY OR MAY NOT overlap with `intvEnd`.
+        // But the very first table at the start of this while loop definitely overlaps.
         while (thisTableIdx < thisTables.size())
         {
             // check `thisTableIdx` if it overlaps
@@ -255,7 +261,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
                 {
                     break;
                 }
-                else if (otherEndKey >= intvStart)
+                else
                 {
                     otherLvlTables.emplace_back(otherTable);
                     // update interval end
@@ -274,7 +280,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
         // at the end of this, `thisLvlTables` and `otherLvlTables` should be filled.
         // first add `thisLvlTables` to `entries`, and store all seen Entry. Then add all other entries in `otherLvlTables` that have not yet been seen.
         // within `thisLvlTables`, there are no overlapping keys.
-        std::vector<Entry> entries;
+        std::vector<Entry> entries; // `entries`
         std::unordered_set<Entry> seen;
 
         for (const auto &thisTable : thisLvlTables)
@@ -315,7 +321,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
 // TODO: implement
 Status LevelManagerImpl::_mergeOverlappingTables()
 {
-    std::cout << "LevelManagerImpl::_mergeOverlappingTables()" << "\n";
+    TINYKV_LOG("LevelManagerImpl::_mergeOverlappingTables()");
 
     if (m_ssTables.size() == 0)
         return Status::OK();

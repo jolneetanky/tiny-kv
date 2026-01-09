@@ -12,6 +12,7 @@ struct DbFactoryConfig
     uint64_t walId = 0;
     std::string walDirectory = "./wal";
     std::string sstableDirectory = "./sstables";
+    int maxLevels = 3;
 };
 
 class DbFactory

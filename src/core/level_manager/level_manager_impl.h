@@ -42,6 +42,7 @@ private:
     std::vector<std::unique_ptr<SSTableManager>> m_ssTableManagers; // brute force, these guys represent files on level 0 for now
     SystemContext &m_systemContext;
     bool m_allowOverlap;
+    bool m_init; // if `m_init` is true, this means all SSTables in this level have been loaded into memory.
 
     std::vector<std::unique_ptr<SSTable>> m_ssTables;
 

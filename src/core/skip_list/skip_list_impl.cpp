@@ -1,24 +1,22 @@
 #include "core/skip_list/skip_list_impl.h"
+#include "common/log.h"
 
 std::optional<Error> SkipListImpl::set(Entry const &entry)
 {
-    std::cout << "[SkipListImpl.set()]" << "\n";
+    TINYKV_LOG("[SkipListImpl.set()]");
     m_map[entry.key] = entry;
     return std::nullopt;
 }
 
 std::optional<Entry> SkipListImpl::get(const std::string &key) const
 {
-    std::cout << "[SkipListImpl.get()]" << std::endl;
+    TINYKV_LOG("[SkipListImpl.get()]");
     auto it = m_map.find(key);
 
     if (it != m_map.end())
     {
         Entry entry{it->second}; // destroyed once this function returns
         return it->second;
-        // if (entry.tombstone == false) {
-        //     return it->second;
-        // }
     }
 
     return std::nullopt;
@@ -26,7 +24,7 @@ std::optional<Entry> SkipListImpl::get(const std::string &key) const
 
 std::optional<std::vector<Entry>> SkipListImpl::getAll() const
 {
-    std::cout << "SkipListImpl.getAll()" << std::endl;
+    TINYKV_LOG("[SkipListImpl.getAll()]");
     std::vector<Entry> res;
 
     for (const auto &[key, entry] : m_map)
@@ -44,7 +42,7 @@ std::optional<int> SkipListImpl::getLength() const
 
 std::optional<Error> SkipListImpl::clear()
 {
-    std::cout << "SkipListImpl.clear()" << std::endl;
+    TINYKV_LOG("[SkipListImpl.clear()]");
     m_map.clear();
     return std::nullopt;
 };

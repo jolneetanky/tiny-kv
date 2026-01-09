@@ -12,13 +12,13 @@
 #include "types/timestamp.h"
 #include "types/status.h"
 
-StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath)
-    : m_basePath{std::move(basePath)}, m_systemContext{systemContext} {};
+StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel)
+    : m_basePath{std::move(basePath)}, m_systemContext{systemContext}, m_maxLevel{std::move(maxLevel)} {};
 
 // write all entries into a file (serialize each entry)
 std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> &entryPtrs, int level)
 {
-    std::cout << "[StorageManagerImpl.write()]" << std::endl;
+    // std::cout << "[StorageManagerImpl.write()]" << std::endl;
 
     if (m_levelManagers.size() == 0)
     {
@@ -37,7 +37,7 @@ std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> 
     Status status{level0Manager->createTable(std::move(entries))};
     if (!status.ok())
     {
-        std::cerr << "[StorageManagerImpl.write()] Failed to write SSTable" << std::endl;
+        // std::cerr << "[StorageManagerImpl.write()] Failed to write SSTable" << std::endl;
         return std::optional<Error>(status.to_string());
     }
 
@@ -46,7 +46,7 @@ std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> 
 
 std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
 {
-    std::cout << "[StorageManagerImpl.get()]" << "\n";
+    // std::cout << "[StorageManagerImpl.get()]" << "\n";
 
     // search all levels
     for (const auto &levelManager : m_levelManagers)
@@ -54,7 +54,7 @@ std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
         std::optional<Entry> entry{levelManager->getKey(key)};
         if (entry && !entry->tombstone)
         {
-            std::cout << "[StorageManagerImpl.get()] FOUND: " << entry.value() << "\n";
+            // std::cout << "[StorageManagerImpl.get()] FOUND: " << entry.value() << "\n";
             return entry;
         }
         if (entry && entry->tombstone)
@@ -63,7 +63,7 @@ std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
         }
     }
 
-    std::cout << "[StorageManagerImpl.get()] key does not exist on disk" << "\n";
+    // std::cout << "[StorageManagerImpl.get()] key does not exist on disk" << "\n";
     return std::nullopt;
 };
 
@@ -73,7 +73,7 @@ std::optional<Error> StorageManagerImpl::compact()
         return std::nullopt;
 
     // merge level `i` with level `i+1`, for all 0 <= i <= n-1
-    for (int lvl = 0; lvl < MAX_LEVEL; lvl++)
+    for (int lvl = 0; lvl < m_maxLevel; lvl++)
     {
         m_levelManagers[lvl]->compactInto(*m_levelManagers[lvl + 1]);
     }
@@ -114,7 +114,7 @@ std::optional<Error> StorageManagerImpl::initLevels()
         int levelNum = std::stoi(match[1].str());
 
         // EDGE CASE: ignore levels beyond MAX_LEVEL
-        if (levelNum > MAX_LEVEL)
+        if (levelNum > m_maxLevel)
         {
             std::cout << "[StorageManagerImpl::initLevels()] Ignoring level-"
                       << levelNum << " (exceeds MAX_LEVEL)" << std::endl;
@@ -126,9 +126,9 @@ std::optional<Error> StorageManagerImpl::initLevels()
 
     // Step 2: create LevelManagers from 0 .. MAX_LEVEL
     m_levelManagers.clear(); // clear JIC we currently have some populated state
-    m_levelManagers.reserve(MAX_LEVEL + 1);
+    m_levelManagers.reserve(m_maxLevel + 1);
 
-    for (int levelNum = 0; levelNum <= MAX_LEVEL; ++levelNum)
+    for (int levelNum = 0; levelNum <= m_maxLevel; ++levelNum)
     {
         std::string levelPath = basePath + "/level-" + std::to_string(levelNum);
 

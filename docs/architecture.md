@@ -16,6 +16,10 @@ and should be updated as the code evolves.
 - Compaction: merges overlapping SSTables and drops overwritten keys.
 - Bloom filters: fast negative lookups for SSTables.
 
+### 1. LevelManager
+
+Currently, the DB works by loading all SSTables into memory for each level. This is extremely memory inefficient however, and will not scale well. Iterators prevent the need for this, by abstracting away the location of the data - callers don't need to know whether the data is in memory (eg. memtable, or on-disk SSTable).
+
 ## Data Flow
 
 1. Write path
