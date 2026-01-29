@@ -17,7 +17,8 @@
 class StorageManagerImpl : public StorageManager
 {
 public:
-    StorageManagerImpl(SystemContext &systemContext, std::string basePath = "./sstables");
+    StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel);
+
     std::optional<Error> write(const std::vector<const Entry *> &entries, int level) override;
 
     std::optional<Entry> get(const std::string &key) const override;
@@ -28,8 +29,8 @@ public:
     std::optional<Error> initLevels(); // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
 
 private:
-    int MAX_LEVEL = 2; // hardcoded for now
-    std::string m_basePath = "./sstables";
+    int m_maxLevel;
+    std::string m_basePath;
 
     // System context
     SystemContext &m_systemContext;

@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include "common/log.h"
 
 TimestampType SSTableWriter::_getTimeNow() const
 {
@@ -44,7 +45,7 @@ bool SSTableWriter::_createFileIfNotExists(const std::string &fullPath) const
 // Serializes an `Entry` into the form serialized data: <keyLen><key><valLen><val><tombstone>
 std::string SSTableWriter::_serializeEntry(const Entry &entry) const
 {
-    // std::cout << "[SSTableManagerFileImpl].serializeEntry()" << std::endl;
+    TINYKV_LOG("[SSTableWriter].serializeEntry()]");
 
     std::string out;
 
@@ -91,7 +92,7 @@ bool SSTableWriter::_writeBinaryToFile(const std::string &path, const std::strin
 SSTableMetadata SSTableWriter::write(const std::string &fname, std::vector<Entry> &entries, TimestampType timestamp, FileNumber file_num)
 {
 
-    std::cout << "[SSTableFileManager._writeEntriesToFile()]" << std::endl;
+    TINYKV_LOG("[SSTableFileManager._writeEntriesToFile()]");
 
     if (entries.empty())
     {
@@ -116,7 +117,7 @@ SSTableMetadata SSTableWriter::write(const std::string &fname, std::vector<Entry
         throw std::runtime_error("SSTableWriter::write(): Failed to write SSTable");
     }
 
-    std::cout << "[SSTableFileManager._writeEntriesToFile()] Successfully WRITE SSTable to path " << fname << "\n";
+    TINYKV_LOG("[SSTableFileManager._writeEntriesToFile()] Successfully WRITE SSTable to path " << fname);
 
     return SSTableMetadata(file_num, timestamp, entries[0].key, entries[entries.size() - 1].key);
 };

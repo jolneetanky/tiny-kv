@@ -5,6 +5,7 @@
 #include <fstream>
 #include <utility>
 #include "wal.h"
+#include "common/log.h"
 
 WAL::WAL(uint64_t id, std::string basePath) : m_basePath{std::move(basePath)}, m_id{id}
 {
@@ -26,7 +27,8 @@ std::string WAL::_buildFileName(uint64_t id)
 
 std::optional<Error> WAL::append(const Entry &e)
 {
-    std::cout << "[WAL.append()]" << "\n";
+    TINYKV_LOG("[WAL.append()]");
+
     // create directory if it doens't exist
     _createDirectory(m_basePath);
 
@@ -64,7 +66,7 @@ std::optional<Error> WAL::append(const Entry &e)
 
 std::optional<Error> WAL::remove()
 {
-    std::cout << "WAL.remove()" << "\n";
+    TINYKV_LOG("WAL.remove()");
     try
     {
         if (std::filesystem::exists(m_fullPath))
@@ -100,8 +102,8 @@ std::optional<std::vector<Entry>> WAL::getEntries()
         if (!in)
         {
             if (in.eof())
-                break;                                                       // clean end
-            std::cout << "[WAL.readEntries()] read WAL type failed" << "\n"; // hard error
+                break;                                              // clean end
+            TINYKV_LOG("[WAL.readEntries()] read WAL type failed"); // hard error
             return std::nullopt;
         }
 
@@ -116,7 +118,7 @@ std::optional<std::vector<Entry>> WAL::getEntries()
         // sanity checks (very light for v0)
         if (klen > (1u << 30) || vlen > (1u << 30))
         {
-            std::cout << "[WAL.readEntries()] WAL record lengths look corrupt";
+            TINYKV_LOG("[WAL.readEntries()] WAL record lengths look corrupt");
             return std::nullopt;
         }
 

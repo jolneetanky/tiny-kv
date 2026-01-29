@@ -8,9 +8,6 @@
 
 class MemTable
 {
-private:
-    int m_size;
-
 public:
     virtual std::optional<Error> put(const std::string &key, const std::string &val) = 0;
     virtual std::optional<Entry> get(const std::string &key) const = 0;

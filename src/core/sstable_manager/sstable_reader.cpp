@@ -1,16 +1,17 @@
 #include "core/sstable_manager/sstable_reader.h"
 #include <iostream>
 #include <fstream>
+#include "common/log.h"
 
 SSTable SSTableReader::read(const std::string &full_path)
 {
     // read binary from file and store in a string buffer
-    std::cout << "[SSTableFileManager.decode()]" << std::endl;
+    TINYKV_LOG("[SSTableReader.decode()]");
     std::string serializedData; // stores the binary. `readBinaryFromFile` will modify this item
 
     if (!_readBinaryFromFile(full_path, serializedData))
     {
-        std::cerr << "[SSTableFileManager.decode()] Failed to read binary from file" << std::endl;
+        std::cerr << "[SSTableReader.decode()] Failed to read binary from file" << std::endl;
         throw std::runtime_error("SSTableReader::read(): Failed to read binary from file");
     }
 
@@ -47,27 +48,13 @@ SSTable SSTableReader::read(const std::string &full_path)
         const char *data{serializedData.data()};
         Entry entry{_deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead)};
 
-        // if (!optEntry)
-        // {
-        //     return std::nullopt;
-        // }
-
-        // entries.push_back(optEntry.value());
         offset += bytesRead;
 
-        std::cout << "[SSTableFileManager.decode()]" << " (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")" << std::endl;
+        TINYKV_LOG("[SSTableReader.decode()]" << " (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")");
     }
 
     SSTableMetadata metadata(file_num, timestamp, entries[0].key, entries[entries.size() - 1].key);
     return SSTable(metadata, std::move(entries));
-
-    // std::cout << "[SSTableFileManager._decode()] Successfully read"
-    //              "\n";
-    // return SSTableFile{entries, timestamp};
-
-    // SSTableFile ssTableFile{_decode(full_path)};
-
-    // m_ssTableFile = std::make_unique<SSTableFile>(ssTableFileOpt->entries, ssTableFileOpt->timestamp);
 };
 
 Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &bytesRead) const
@@ -79,7 +66,6 @@ Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &by
     if (pos + 4 > size)
     {
         std::string msg{"Buffer too small for key length"};
-        // std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
         throw std::runtime_error("[SSTableReader._deserializeEntry()] Failed to deserialize entry: " + msg);
     }
     uint32_t keyLenNetwork;
@@ -92,8 +78,6 @@ Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &by
     {
         std::string msg{"Buffer too small for key"};
         throw std::runtime_error("[SSTableReader._deserializeEntry()] Failed to deserialize entry: " + msg);
-        // std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
-        // return std::nullopt;
     };
     entry.key.assign(data + pos, keyLen);
     pos += keyLen;
@@ -103,8 +87,6 @@ Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &by
     {
         std::string msg{"Buffer too small for value length"};
         throw std::runtime_error("[SSTableReader._deserializeEntry()] Failed to deserialize entry: " + msg);
-        // std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
-        // return std::nullopt;
     }
 
     uint32_t valLenNetwork;
@@ -117,8 +99,6 @@ Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &by
     {
         std::string msg{"Buffer too small for value"};
         throw std::runtime_error("[SSTableReader._deserializeEntry()] Failed to deserialize entry: " + msg);
-        // std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
-        // return std::nullopt;
     }
     entry.val.assign(data + pos, valLen);
     pos += valLen;
@@ -128,8 +108,6 @@ Entry SSTableReader::_deserializeEntry(const char *data, size_t size, size_t &by
     {
         std::string msg{"Buffer too small for tombstone"};
         throw std::runtime_error("[SSTableReader._deserializeEntry()] Failed to deserialize entry: " + msg);
-        // std::cout << "[SSTableManagerImpl.deserializeEntry()] Failed to deserialize entry: " << msg << "\n";
-        // return std::nullopt;
     }
 
     entry.tombstone = data[pos] != 0 ? true : false;
@@ -162,58 +140,3 @@ bool SSTableReader::_readBinaryFromFile(const std::string &filename, std::string
     inFile.close();
     return true;
 }
-
-// TimestampType SSTableReader::_getTimeNow() {}; // helper to get current timestamp
-// reads entries from a particular SSTable and parses into an SSTableFile
-// SSTableFile SSTableReader::_decode(std::string file) const
-// {
-//     // read binary from file and store in a string buffer
-//     std::cout << "[SSTableFileManager.decode()]" << std::endl;
-//     std::string serializedData; // stores the binary. `readBinaryFromFile` will modify this item
-
-//     if (!_readBinaryFromFile(filename, serializedData))
-//     {
-//         std::cerr << "[SSTableFileManager.decode()] Failed to read binary from file" << std::endl;
-//         return std::nullopt;
-//     }
-
-//     // EDGE CASE: File is empty for some reason
-//     // If file is empty, return nullopt
-//     if (serializedData.size() == 0)
-//     {
-//         std::cerr << "[SSTableFileManager.decode()] ERROR: empty file: " << filename << std::endl;
-//         return std::nullopt;
-//     }
-
-//     // extract timestamp from the last 8 bytes
-//     TimestampType timestamp;
-//     char *timestampSrc = serializedData.data() + serializedData.size() - sizeof(TimestampType);
-
-//     std::memcpy(&timestamp, timestampSrc, sizeof(TimestampType));
-
-//     // deserialize each entry.
-//     size_t bytesRead{0};
-//     size_t offset{0};
-//     size_t serializedEntriesSize{serializedData.size() - sizeof(TimestampType)};
-//     std::vector<Entry> entries;
-
-//     while (offset < serializedEntriesSize)
-//     {
-//         const char *data{serializedData.data()};
-//         std::optional<Entry> optEntry{_deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead)};
-
-//         if (!optEntry)
-//         {
-//             return std::nullopt;
-//         }
-
-//         entries.push_back(optEntry.value());
-//         offset += bytesRead;
-
-//         std::cout << "[SSTableFileManager.decode()]" << " (" << optEntry->key << ", " << optEntry->val << ", " << optEntry->tombstone << ")" << std::endl;
-//     }
-
-//     std::cout << "[SSTableFileManager._decode()] Successfully read"
-//                  "\n";
-//     return SSTableFile{entries, timestamp};
-// };

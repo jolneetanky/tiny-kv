@@ -1,5 +1,6 @@
 #include "core/sstable_manager/sstable.h"
 #include <iostream>
+#include <utility>
 
 SSTable::SSTable(SSTableMetadata meta, std::vector<Entry> &&entries) : m_meta{meta}, m_entries{std::move(entries)}
 {
@@ -13,9 +14,6 @@ SSTableMetadata SSTable::meta() const
 
 std::optional<Entry> SSTable::get(std::string key) const
 {
-    // binary search on entries
-    std::cout << "[SSTable.get()]" << "\n";
-
     if (m_entries.size() == 0)
     {
         return std::nullopt;
@@ -33,7 +31,6 @@ std::optional<Entry> SSTable::get(std::string key) const
 
         if (midEntry.key == key)
         {
-            std::cout << "[SSTable.get()] FOUND: " << "\n";
             return midEntry;
         }
 
@@ -49,11 +46,9 @@ std::optional<Entry> SSTable::get(std::string key) const
 
     if (m_entries[l].key == key)
     {
-        std::cout << "[SSTable.get()] FOUND" << "\n";
         return m_entries[l];
     }
 
-    std::cout << "[SSTable.get()] NOT FOUND" << "\n";
     return std::nullopt;
 };
 
@@ -82,3 +77,11 @@ std::span<const Entry> SSTable::getEntries() const
 {
     return m_entries;
 }
+
+// Why not return the iterator by value?
+//
+std::unique_ptr<tinykv::Iterator> SSTable::NewIterator() const
+{
+    auto it = std::make_unique<SSTable::Iter>(this);
+    return std::move(it);
+};

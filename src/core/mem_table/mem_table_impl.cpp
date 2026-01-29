@@ -1,5 +1,6 @@
 #include "core/mem_table/mem_table_impl.h"
 #include <optional>
+#include "common/log.h"
 
 MemTableImpl::MemTableImpl(int size, SkipList &skipList, StorageManager &storageManager, WAL &wal, SystemContext &systemContext) : m_size{size}, m_skiplist{skipList}, m_storageManager{storageManager}, m_wal{wal}, m_systemContext{systemContext} {}; // constructor
 
@@ -9,7 +10,7 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
     // flush if needed
     if (isReadOnly())
     {
-        std::cout << "[MemTableImpl.put()] Cannot PUT: read only" << "\n";
+        TINYKV_LOG("[MemTableImpl.put()] Cannot PUT: read only");
         return Error{"[MemTableImpl.put()] Cannot PUT: memtable in read-only mode"};
     }
 
@@ -21,7 +22,7 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
 
         if (errOpt)
         {
-            std::cout << "[MemTableImpl.put()] Failed to PUT: " << errOpt->error << "\n";
+            TINYKV_LOG("[MemTableImpl.put()] Failed to PUT: " << errOpt->error);
             return Error{"[MemTableImpl.put()] Failed to PUT: Flushing error "};
         }
     }
@@ -30,7 +31,7 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
     // Write to WAL
     if (const auto &err = m_wal.append(Entry(key, val)))
     {
-        std::cout << "[MemTableImpl.put()] Failed to append to WAL: " << err->error << "\n";
+        TINYKV_LOG("[MemTableImpl.put()] Failed to append to WAL: " << err->error);
         return Error{"MemTableImpl.put()] Failed to PUT: Failed to write to WAL"};
     }
 
@@ -41,28 +42,28 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
 
 std::optional<Entry> MemTableImpl::get(const std::string &key) const
 {
-    std::cout << "[MemTableImpl.get()] GET";
+    TINYKV_LOG("[MemTableImpl.get()] GET");
 
     std::optional<Entry> optEntry{m_skiplist.get(key)};
 
     if (!optEntry)
     {
-        std::cout << "[MemTableImpl.get()] key does not exist in memtable" << "\n";
+        TINYKV_LOG("[MemTableImpl.get()] key does not exist in memtable");
         return std::nullopt;
     }
 
-    std::cout << "[MemTableImpl.get()] GOT: (" << key << ", " << optEntry.value().val << ")" << "\n";
+    TINYKV_LOG("[MemTableImpl.get()] GOT: (" << key << ", " << optEntry.value().val << ")");
     return optEntry;
 };
 
 std::optional<Error> MemTableImpl::del(const std::string &key)
 {
-    std::cout << "[MemTableImpl.del()]" << std::endl;
+    TINYKV_LOG("[MemTableImpl.del()]");
 
     // TODO: check that entry is either in memtable OR in disk
     if (!get(key) && !m_storageManager.get(key))
     {
-        std::cout << "[MemTableImpl.del()] Cannot DELETE: key does not exist" << std::endl;
+        TINYKV_LOG("[MemTableImpl.del()] Cannot DELETE: key does not exist");
         return Error{"Cannot DELETE: key does not exist"};
     }
 
@@ -70,7 +71,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key)
     // mark as tombstone
     if (isReadOnly())
     {
-        std::cout << "[MemTableImpl.del()] Cannot DELETE: memtable in read-only mode (ie. it is being flushed)" << std::endl;
+        TINYKV_LOG("[MemTableImpl.del()] Cannot DELETE: memtable in read-only mode (ie. it is being flushed)");
         return Error{"Cannot DELETE: memtable in read-only mode"};
     }
 
@@ -82,7 +83,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key)
 
         if (errOpt)
         {
-            std::cout << "[MemTableImpl.del()] Failed to DELETE: " << errOpt->error << "\n";
+            TINYKV_LOG("[MemTableImpl.del()] Failed to DELETE: " << errOpt->error);
             return Error{"[MemTableImpl.put()] Failed to DELETE: Flushing error "};
         }
     }
@@ -90,7 +91,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key)
     // write to WAL
     if (const auto &err = m_wal.append(Entry(key, "val", true)))
     {
-        std::cout << "[MemTableImpl.put()] Failed to append to WAL: " << err->error << "\n";
+        TINYKV_LOG("[MemTableImpl.put()] Failed to append to WAL: " << err->error);
         return Error{"MemTableImpl.put()] Failed to PUT: Failed to write to WAL"};
     }
 
@@ -99,7 +100,7 @@ std::optional<Error> MemTableImpl::del(const std::string &key)
 
     if (!m_skiplist.getLength())
     {
-        std::cout << "[MemTableImpl.del()] Failed to get length of skip list" << "\n";
+        TINYKV_LOG("[MemTableImpl.del()] Failed to get length of skip list");
         return Error{"Failed to DELETE"};
     }
 
@@ -113,14 +114,14 @@ bool MemTableImpl::isReadOnly() const
 
 std::optional<Error> MemTableImpl::flushToDisk()
 {
-    std::cout << "[MemTableImpl.flushToDisk()]" << std::endl;
+    TINYKV_LOG("[MemTableImpl.flushToDisk()]");
     m_readOnly = true;
 
     std::optional<std::vector<Entry>> optEntries{m_skiplist.getAll()};
 
     if (!optEntries)
     {
-        std::cout << "[MemTableImpl.flushToDisk()] Failed to get all entries from memtable";
+        TINYKV_LOG("[MemTableImpl.flushToDisk()] Failed to get all entries from memtable");
         return Error{"Failed to get all entries from memtable"};
     }
 
@@ -132,7 +133,7 @@ std::optional<Error> MemTableImpl::flushToDisk()
     {
         entryPtrs.push_back(&entry);
 
-        std::cout << entry << std::endl;
+        TINYKV_LOG(entry);
     }
 
     // write to file
@@ -140,14 +141,14 @@ std::optional<Error> MemTableImpl::flushToDisk()
 
     if (errOpt)
     {
-        std::cout << "[MemTableImpl.flushToDisk()] ERROR: " << errOpt->error << "\n";
+        TINYKV_LOG("[MemTableImpl.flushToDisk()] ERROR: " << errOpt->error);
         return errOpt.value();
     }
 
     // delete the old WAL file
     if (const auto &err = m_wal.remove())
     {
-        std::cout << "[MemTableImpl.flushToDisk()] ERROR: Failed to delete WAL - " << err->error << "\n";
+        TINYKV_LOG("[MemTableImpl.flushToDisk()] ERROR: Failed to delete WAL - " << err->error);
         return err.value();
     }
 
@@ -161,7 +162,7 @@ std::optional<Error> MemTableImpl::flushToDisk()
 
 std::optional<Error> MemTableImpl::replayWal()
 {
-    std::cout << "[MemTableImpl.replayWal()]" << "\n";
+    TINYKV_LOG("[MemTableImpl.replayWal()]");
     const auto &entries = m_wal.getEntries();
     m_readOnly = true;
 
@@ -181,7 +182,7 @@ std::optional<Error> MemTableImpl::replayWal()
     {
         if (const auto &err = flushToDisk())
         {
-            std::cout << "[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error << "\n";
+            TINYKV_LOG("[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error);
             return Error{"[MemTableImpl.replayWal()] Failed to replay WAL: Flushing error "};
         }
     }
