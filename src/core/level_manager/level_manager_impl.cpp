@@ -41,7 +41,8 @@ TimestampType LevelManagerImpl::_getTimeNow()
 
 /*
 1. Creates the directory for this level if it doesn't exist
-2. Look through existing files (ie. SSTables) in this level, loads their manager into memory
+2. Look through existing files (ie. SSTables) in this level, and reads them into memory as an SSTable.
+3. The SSTable is then stored in memory, inside this LevelManager.
 */
 std::optional<Error> LevelManagerImpl::init()
 {
@@ -86,31 +87,58 @@ std::optional<Error> LevelManagerImpl::init()
 // NEW API
 std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 {
-    TINYKV_LOG("[LevelManagerImpl.getKey()] LEVEL " << std::to_string(m_levelNum));
+    TINYKV_LOG("[LevelManagerImpl.getKey()] LEVEL " + std::to_string(m_levelNum) + ", KEY: " + key);
 
     // sort SSTables wrt fileNum
+    // for (const auto &ssTable : m_ssTables)
+    // {
+    //     if (!ssTable->contains(key))
+    //     {
+    //         continue;
+    //     }
+    //
+    //     std::optional<Entry> entryOpt{ssTable->get(key)};
+    //     if (entryOpt)
+    //     {
+    //         TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND");
+    //         return entryOpt;
+    //     }
+    //
+    //     // in the latest entry, key has been deleted. So can stop searching alr
+    //     if (entryOpt && entryOpt->tombstone)
+    //     {
+    //         break;
+    //     }
+    // }
+
     for (const auto &ssTable : m_ssTables)
     {
-        if (!ssTable->contains(key))
+        TINYKV_LOG("[LevelManagerImpl.getKey()] " << *ssTable);
+        auto it = ssTable->NewIterator();
+        it->Seek(key);
+
+        if (!it->Valid())
         {
             continue;
         }
 
-        std::optional<Entry> entryOpt{ssTable->get(key)};
-        if (entryOpt)
-        {
-            TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND");
-            return entryOpt;
-        }
+        // if (it->Key() != key)
+        // {
+        //     continue;
+        // }
 
-        // in the latest entry, key has been deleted. So can stop searching alr
-        if (entryOpt && entryOpt->tombstone)
+        if (it->isTombstone()) // stop at the first tombstone
         {
+            TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND TOMBSTONED KEY " + key);
             break;
         }
+
+        // if valid and not tombstoned, return it
+        TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND KEY " + key);
+        return Entry{it->Key(), it->Value(), it->isTombstone()};
     }
 
-    TINYKV_LOG("[LevelManagerImpl.getKey()] key does not exist on disk");
+    TINYKV_LOG("[LevelManagerImpl.getKey()] key \"" + key + "\" does not exist on disk");
     return std::nullopt;
 };
 

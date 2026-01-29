@@ -15,7 +15,7 @@
 StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel)
     : m_basePath{std::move(basePath)}, m_systemContext{systemContext}, m_maxLevel{std::move(maxLevel)} {};
 
-// write all entries into a file (serialize each entry)
+// 1. Hands entries to Level 0 Manager to write the entries into an SSTable.
 std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> &entryPtrs, int level)
 {
     // std::cout << "[StorageManagerImpl.write()]" << std::endl;

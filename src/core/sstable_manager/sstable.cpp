@@ -1,5 +1,6 @@
 #include "core/sstable_manager/sstable.h"
 #include <iostream>
+#include <utility>
 
 SSTable::SSTable(SSTableMetadata meta, std::vector<Entry> &&entries) : m_meta{meta}, m_entries{std::move(entries)}
 {
@@ -82,3 +83,11 @@ std::span<const Entry> SSTable::getEntries() const
 {
     return m_entries;
 }
+
+// Why not return the iterator by value?
+//
+std::unique_ptr<tinykv::Iterator> SSTable::NewIterator() const
+{
+    auto it = std::make_unique<SSTable::Iter>(this);
+    return std::move(it);
+};

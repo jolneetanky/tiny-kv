@@ -10,6 +10,7 @@ namespace tinykv
     {
     public:
         // Delete copy ctor & copy assign
+        // Why did we make it non-copyable?
         Iterator(const Iterator &) = delete;
         Iterator &operator=(const Iterator &) = delete;
 
@@ -23,7 +24,7 @@ namespace tinykv
         virtual void SeekToFirst() = 0;
 
         // Position the iterator at the last key in the source.
-        // After this, the iterator is Valid() iff the source is not empty.
+        // After this, the iterator is Valid() iff the source is not empty. (Else not valid)
         virtual void SeekToLast() = 0;
 
         // Moves to the first position with matching target key.
@@ -44,6 +45,9 @@ namespace tinykv
         virtual const std::string &Value() const = 0;
 
         virtual bool isTombstone() const = 0;
+
+    protected:
+        Iterator() = default; // need declare default ctor cause we deleted the copy ctor
     };
 }
 

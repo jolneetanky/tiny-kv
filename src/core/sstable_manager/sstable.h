@@ -4,6 +4,7 @@
 #include "core/sstable_manager/sstable_metadata.h"
 #include "types/entry.h"
 #include <span>
+#include "core/iterators/iterator.h"
 
 /*
 This class manages an SSTable on disk.
@@ -28,6 +29,25 @@ INVARIANTS:
 class SSTable
 {
 private:
+    class Iter final : public tinykv::Iterator
+    {
+    public:
+        explicit Iter(const SSTable *table);
+
+        bool Valid() const override;
+        void SeekToFirst() override;
+        void SeekToLast() override;
+        void Seek(const std::string &key) override;
+        void Next() override;
+        const std::string &Key() const override;
+        const std::string &Value() const override;
+        bool isTombstone() const override;
+
+    private:
+        size_t m_index;
+        const SSTable *m_ssTable; // non-owning view of an SSTable
+    };
+
     SSTableMetadata m_meta;
     std::vector<Entry> m_entries;
 
@@ -41,6 +61,8 @@ public:
     std::size_t getSize() const; // returns the number of entries in this table.
     std::span<const Entry> getEntries() const;
 
+    std::unique_ptr<tinykv::Iterator> NewIterator() const; // For now, Iterators are non-copyable so we can't return by value. I return a smart pointer to avoid manual deletes.
+
     // delete copy ctor and copy assignment operator
     // we don't want an SSTable to be copied.
     SSTable(const SSTable &) = delete;
@@ -50,6 +72,23 @@ public:
     // because the compiler won't define it if we defined the copy ctor and assignment (which we did when we deleted them)
     SSTable(SSTable &&) noexcept = default;
     SSTable &operator=(SSTable &&) noexcept = default;
+
+    friend std::ostream &operator<<(std::ostream &os, const SSTable &table);
 };
+
+inline std::ostream &operator<<(std::ostream &os, const SSTable &table)
+{
+    os << "SSTable[";
+    for (size_t i = 0; i < table.m_entries.size(); ++i)
+    {
+        if (i > 0)
+        {
+            os << ", ";
+        }
+        os << table.m_entries[i];
+    }
+    os << "]";
+    return os;
+}
 
 #endif
