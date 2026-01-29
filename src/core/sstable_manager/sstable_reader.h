@@ -27,11 +27,6 @@ public:
 private:
     Entry _deserializeEntry(const char *data, size_t size, size_t &bytesRead) const;
     bool _readBinaryFromFile(const std::string &filename, std::string &outData) const;
-    // TimestampType _getTimeNow(); // helper to get current timestamp
-    // SSTableFile _decode(std::string file) const;
-
-    // std::optional<Error> _readFileToMemory(); // Reads file, and stores it in-memory within this object.
-    // std::optional<Error> _init();             // Reads file to memory, and initializes Bloom Filter
 };
 
 #endif
