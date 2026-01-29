@@ -18,7 +18,7 @@ target_include_directories(tinykv_core PUBLIC
 
 # disable for benchmarks, enable when u want
 target_compile_definitions(tinykv_core
-  PUBLIC TINYKV_ENABLE_LOGGING=1
+  PUBLIC TINYKV_ENABLE_LOGGING=0
 )
 
 # link spdlog for logging
