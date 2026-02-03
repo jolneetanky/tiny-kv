@@ -7,6 +7,14 @@
 #include "core/iterators/iterator.h"
 
 /*
+SSTable DISK LAYOUT:
+
+| Entry 0 | Entry 1 | ... | Entry N |
+| timestamp (sizeof TimestampType) |
+| file_num (sizeof FileNumber) |
+*/
+
+/*
 This class manages an SSTable on disk.
 It serves as the logical representation of an SSTable on disk.
 
@@ -22,7 +30,7 @@ This class represents an SSTable file.
 
 INVARIANTS:
 1. Assume every SSTable file has no duplicate keys.
-2. Assume this SSTable represents an actual SSTAble file that exists on disk. It is the caller's responsibility to ensure this.
+2. Assume this SSTable represents an actual SSTable file that exists on disk. It is the caller's responsibility to ensure this.
 3. Assume the SSTable contains at least one entry. UB otherwise for the methods of this SSTable.
 4. Assume the entries are always sorted.
 */

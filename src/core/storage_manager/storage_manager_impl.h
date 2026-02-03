@@ -25,8 +25,11 @@ public:
 
     std::optional<Error> compact() override;
 
-    // initializes the level managers based on existing folders on disk. Creates all file managers up to MAX_LEVEL if there's nothing
-    std::optional<Error> initLevels(); // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothing
+    // initializes the level managers based on existing folders on disk.
+    // Creates all file managers up to MAX_LEVEL.
+    // For each level, if the level dir exists, call `levelManagers[i].init()` to load SSTables into that level.
+    // Else, create a new dir and store the LevelManager as it is.
+    std::optional<Error> initLevels(); // initializes the level managers based on existing folders on disk. Creates level 0 file manager if there's nothin
 
 private:
     int m_maxLevel;

@@ -20,7 +20,7 @@ namespace
     protected:
         void SetUp() override
         {
-            cleanupStorage();
+            // cleanupStorage();
         }
 
         void TearDown() override
@@ -159,3 +159,9 @@ TEST_F(DbStorageTest, CompactionRespectsDeletes)
     EXPECT_FALSE(result.success);
     EXPECT_FALSE(result.data.has_value());
 }
+
+// TODO: Write test for SSTableReader.write()
+// TODO: Write test for SSTableReader.read()
+// Reader should read what was just written
+// Serialize it to a proper SSTable file
+// And we should be able to iterate through and list all entries that were written.

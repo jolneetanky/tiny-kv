@@ -26,3 +26,12 @@ target_link_libraries(tinykv_core
   PUBLIC
     spdlog::spdlog
 )
+
+# CLI executable
+add_executable(tinykv_cli
+  ${CMAKE_CURRENT_LIST_DIR}/main.cpp
+)
+target_link_libraries(tinykv_cli
+  PRIVATE
+    tinykv_core
+)

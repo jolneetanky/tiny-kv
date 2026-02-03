@@ -32,10 +32,15 @@ public:
     Status createTable(std::vector<Entry> &&entries) override;
     Status compactInto(LevelManager &other) override;
 
-    std::optional<Error> init() override;
+    // Reads the files in this directory, and loads them into memory as an SSTable.
+    // Who calls this? For now, anyone can call this.
+    // TODO: maybe we should hide this as it exposes internal state.
+    // ASSUMPTIONS:
+    // 1. Corresponding directory already exists.
     Status initNew() override;
 
 private:
+    std::string m_logPrefix;
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
     std::mutex m_mutex;

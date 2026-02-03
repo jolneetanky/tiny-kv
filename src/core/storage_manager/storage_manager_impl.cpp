@@ -11,6 +11,7 @@
 #include <utility>
 #include "types/timestamp.h"
 #include "types/status.h"
+#include "common/log.h"
 
 StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel)
     : m_basePath{std::move(basePath)}, m_systemContext{systemContext}, m_maxLevel{std::move(maxLevel)} {};
@@ -18,13 +19,13 @@ StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string
 // 1. Hands entries to Level 0 Manager to write the entries into an SSTable.
 std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> &entryPtrs, int level)
 {
-    // std::cout << "[StorageManagerImpl.write()]" << std::endl;
-
+    // initialise levels if there are no level managers read into memory yet.
     if (m_levelManagers.size() == 0)
     {
         initLevels();
     }
 
+    // Write to level 0
     auto &level0Manager{m_levelManagers[0]};
 
     std::vector<Entry> entries;
@@ -83,7 +84,7 @@ std::optional<Error> StorageManagerImpl::compact()
 
 std::optional<Error> StorageManagerImpl::initLevels()
 {
-    std::cout << "[StorageManagerImpl::initLevels()]" << std::endl;
+    TINYKV_LOG("[StorageManagerImpl::initLevels()]");
 
     const std::string &basePath = m_basePath;
 
@@ -138,6 +139,9 @@ std::optional<Error> StorageManagerImpl::initLevels()
             m_systemContext);
 
         Status status;
+        // 2 CASES:
+        // 1. either the `levelNum` has alr been discovered (ie. is an existing directory), OR
+        // 2. `levelNum` has not yet been discovered (ie. the corresponding directory doesn't exist yet)
         if (discoveredLevels.count(levelNum))
         {
             // Existing directory → load SSTables

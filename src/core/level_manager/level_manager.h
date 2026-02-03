@@ -40,7 +40,6 @@ public:
     // ASSUMPTION: the related directory has already been created.
     virtual Status initNew() = 0;
 
-    virtual std::optional<Error> init() = 0;
     virtual ~LevelManager() = default;
 };
 

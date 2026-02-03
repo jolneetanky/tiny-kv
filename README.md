@@ -42,7 +42,7 @@ cmake --build build -j
 4. Run:
 
 ```sh
-./build/tinykv
+./build/src/tinykv_cli
 ```
 
 ## Example Usage
