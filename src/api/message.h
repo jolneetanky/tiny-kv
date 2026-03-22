@@ -26,8 +26,7 @@ namespace protocol
     struct Response
     {
         bool ok = false;
-        std::string message;             // more details about the response, like "NOT_FOUND", "ERR", "OK", etc.
-        std::optional<std::string> data; // additional datafor GET resopnse.
+        std::optional<std::string> data;
     };
 } // namespace protocol
 

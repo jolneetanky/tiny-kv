@@ -18,7 +18,7 @@ void Session::run()
         std::string parseErr;
         if (!protocol::decodeLine(line.value(), req, parseErr))
         {
-            conn_.writeAll(protocol::encodeResponse({false, parseErr, std::nullopt}));
+            conn_.writeAll(protocol::encodeResponse({false, parseErr}));
             continue;
         }
 

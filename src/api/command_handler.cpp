@@ -8,7 +8,7 @@ protocol::Response CommandHandler::execute(
     case protocol::Command::GET:
     {
         if (args.empty())
-            return {false, "Usage: GET <key>", std::nullopt};
+            return {false, "Usage: GET <key>"};
         return db_.get(args[0]);
     }
 
@@ -19,9 +19,9 @@ protocol::Response CommandHandler::execute(
         auto res = db_.put(args[0], args[1]);
         if (res.ok)
         {
-            return {true, "OK", std::nullopt};
+            return {true, "OK"};
         }
-        return {false, res.message, std::nullopt};
+        return {false, res.data};
     }
 
     case protocol::Command::DEL:
@@ -31,9 +31,9 @@ protocol::Response CommandHandler::execute(
         auto res = db_.del(args[0]);
         if (res.ok)
         {
-            return {true, "OK", std::nullopt};
+            return {true, "OK"};
         }
-        return {false, res.message, std::nullopt};
+        return {false, res.data};
     }
 
     case protocol::Command::_FLUSH:
@@ -41,16 +41,16 @@ protocol::Response CommandHandler::execute(
         protocol::Response res = db_.forceFlushForTests();
         if (res.ok)
         {
-            return {true, "OK", std::nullopt};
+            return {true, "OK"};
         }
-        return {false, res.message, std::nullopt};
+        return {false, res.data};
     }
 
     case protocol::Command::EXIT:
-        return {true, "Bye", std::nullopt};
+        return {true, "Bye"};
 
     default:
-        return {false, "Unknown command", std::nullopt};
+        return {false, "Unknown command"};
         break;
     }
 }

@@ -31,6 +31,43 @@ namespace protocol
         return Command::UNKNOWN;
     }
 
+    std::string encodeRequest(const protocol::Request &req)
+    {
+        std::string encoded;
+
+        switch (req.command)
+        {
+        case Command::PUT:
+            encoded = "PUT";
+            break;
+        case Command::GET:
+            encoded = "GET";
+            break;
+        case Command::DEL:
+            encoded = "DEL";
+            break;
+        case Command::EXIT:
+            encoded = "EXIT";
+            break;
+        case Command::_FLUSH:
+            encoded = "_FLUSH";
+            break;
+        default:
+            encoded = "UNKNOWN";
+            break;
+        }
+
+        for (const std::string &arg : req.args)
+        {
+            encoded.push_back(' ');
+            encoded += arg;
+        }
+
+        encoded.push_back('\n');
+        return encoded;
+    }
+
+    // string -> Request
     bool decodeLine(const std::string &line, Request &outReq, std::string &err)
     {
         std::istringstream iss(line); // handles tokenization, eg. "GET mykey" or "GET     mykey" -> ["GET", "mykey"]
@@ -61,13 +98,50 @@ namespace protocol
         return true;
     }
 
+    // IMPT: end with "\n"
+    // looks like eg. "OK <value>" / "ERR <msg>"
     std::string encodeResponse(const Response &resp)
     {
         const std::string prefix = resp.ok ? "OK" : "ERR";
-        if (resp.message.empty())
+        if (!resp.data.has_value())
         {
             return prefix + "\n";
         }
-        return prefix + " " + resp.message + "\n";
+        return prefix + " " + resp.data.value() + "\n";
+    }
+
+    // string -> Response
+    bool decodeResponseLine(const std::string &line, protocol::Response &outRes, std::string &err)
+    {
+        outRes.data.reset();
+
+        const std::size_t spacePos = line.find(' ');
+        const std::string_view status(line.data(), spacePos == std::string::npos ? line.size() : spacePos);
+
+        if (status == "OK")
+        {
+            outRes.ok = true;
+            if (spacePos != std::string::npos)
+            {
+                outRes.data = line.substr(spacePos + 1);
+            }
+            err.clear();
+            return true;
+        }
+
+        if (status == "ERR")
+        {
+            outRes.ok = false;
+            if (spacePos != std::string::npos)
+            {
+                outRes.data = line.substr(spacePos + 1);
+            }
+            err.clear();
+            return true;
+        }
+
+        err = "invalid response status";
+        outRes.ok = false;
+        return false;
     }
 } // namespace protocol

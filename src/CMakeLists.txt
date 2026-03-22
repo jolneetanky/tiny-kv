@@ -1,11 +1,12 @@
-# Collect all .cpp files under src/, except cli.cpp and main.cpp
+# Collect all .cpp files under src/, except executable entrypoints
 file(GLOB_RECURSE TINYKV_SRC
   "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
 )
 
-# Exclude cli.cpp and main.cpp from core library sources
+# Exclude executable entrypoints from core library sources
 list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/server_main\\.cpp$")
 list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/main\\.cpp$")
+list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/cli_main\\.cpp$")
 
 # Build tinykv_core library
 add_library(tinykv_core STATIC ${TINYKV_SRC})
@@ -23,7 +24,7 @@ target_compile_definitions(tinykv_core
 
 # CLI executable
 add_executable(tinykv_cli
-  ${CMAKE_CURRENT_LIST_DIR}/main.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/cli_main.cpp
 )
 target_link_libraries(tinykv_cli
   PRIVATE
