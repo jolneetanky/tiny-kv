@@ -1,7 +1,6 @@
 #ifndef LEVEL_MANAGER
 #define LEVEL_MANAGER
 
-#include "core/sstable_manager/sstable_manager.h"
 #include "core/sstable_manager/sstable.h"
 #include "types/error.h"
 #include "types/entry.h"
@@ -24,8 +23,6 @@ class LevelManager
 {
 
 public:
-    using const_iterator = std::vector<std::unique_ptr<SSTableManager>>::const_iterator;
-
     virtual const int &getLevel() = 0;
 
     virtual std::optional<Entry> getKey(const std::string &key) const = 0;

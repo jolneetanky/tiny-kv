@@ -13,7 +13,7 @@ enum class Command
     GET,
     DEL,
     EXIT,
-    _FLUSH, // admin command
+    _FLUSH, // admin command to manually trigger flush to disk (otherwise, flushes happen when memtable gets full)
     UNKNOWN,
 };
 
@@ -42,6 +42,7 @@ int main()
     std::cout << "Welcome to TinyKV! Commands: PUT <key> <value>, GET <key>, DEL <key>, EXIT\n";
     std::string line;
 
+    /*
     while (true)
     {
         std::cout << "> ";
@@ -118,6 +119,7 @@ int main()
         case Command::_FLUSH:
         {
             Response<void> resp = db->forceFlushForTests();
+            std::cout << (resp.success ? "OK" : "ERR") << (resp.message.empty() ? "" : (": " + resp.message)) << "\n";
             break;
         }
         case Command::EXIT:
@@ -127,5 +129,6 @@ int main()
             break;
         }
     }
+        */
 }
 //

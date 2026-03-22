@@ -7,7 +7,6 @@
 #include "types/entry.h"
 #include "types/sstable_file.h"
 #include "core/storage_manager/storage_manager.h"
-#include "core/sstable_manager/sstable_manager.h"
 #include "core/level_manager/level_manager.h"
 
 // contexts

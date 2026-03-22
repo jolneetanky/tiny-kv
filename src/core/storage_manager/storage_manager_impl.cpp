@@ -1,6 +1,5 @@
 #include "core/storage_manager/storage_manager_impl.h"
 #include "core/level_manager/level_manager_impl.h"
-#include "core/sstable_manager/sstable_manager_impl.h"
 #include <string>
 #include <iostream>
 #include <filesystem>

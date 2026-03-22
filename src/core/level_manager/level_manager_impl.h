@@ -2,7 +2,6 @@
 #define LEVEL_MANAGER_IMPL
 
 #include <vector>
-#include "core/sstable_manager/sstable_manager.h"
 #include "types/error.h"
 #include "types/entry.h"
 #include "types/status.h"
@@ -44,10 +43,8 @@ private:
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
     std::mutex m_mutex;
-    std::vector<std::unique_ptr<SSTableManager>> m_ssTableManagers; // brute force, these guys represent files on level 0 for now
     SystemContext &m_systemContext;
     bool m_allowOverlap;
-    bool m_init; // if `m_init` is true, this means all SSTables in this level have been loaded into memory.
 
     std::vector<std::unique_ptr<SSTable>> m_ssTables;
 

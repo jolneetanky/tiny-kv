@@ -1,5 +1,4 @@
 #include "core/level_manager/level_manager_impl.h"
-#include "core/sstable_manager/sstable_manager_impl.h"
 #include "core/sstable_manager/sstable_writer.h"
 #include "core/sstable_manager/sstable_reader.h"
 #include <iostream>
@@ -38,51 +37,6 @@ TimestampType LevelManagerImpl::_getTimeNow()
 
     return timestamp;
 }
-
-/*
-1. Creates the directory for this level if it doesn't exist
-2. Look through existing files (ie. SSTables) in this level, and reads them into memory as an SSTable.
-3. The SSTable is then stored in memory, inside this LevelManager.
-*/
-// std::optional<Error> LevelManagerImpl::init()
-// {
-//     TINYKV_LOG(m_logPrefix + "[init()]");
-
-//     // 1. Ceate directory if it doesn't exist
-//     if (!std::filesystem::exists(m_directoryPath))
-//     {
-//         try
-//         {
-//             if (!std::filesystem::create_directories(m_directoryPath))
-//             {
-//                 return Error{"Failed to create directory: " + m_directoryPath};
-//             }
-//             TINYKV_LOG("[LevelManagerImpl.init()] Created directory: " << m_directoryPath);
-//         }
-//         catch (const std::filesystem::filesystem_error &e)
-//         {
-//             return Error{std::string("Filesystem error creating directory: ") + e.what()};
-//         }
-//     }
-
-//     // 2. Look through existing files in the directory for this level, and initialize them
-//     for (auto const &dirEntry : std::filesystem::directory_iterator{m_directoryPath})
-//     {
-//         const std::string &fileName = dirEntry.path().filename().string();
-
-//         // read the files
-//         SSTableReader reader;
-//         std::unique_ptr<SSTable> table = std::make_unique<SSTable>(reader.read(dirEntry.path().string()));
-//         m_ssTables.emplace_back(std::move(table)); // emplace the rvalue, which calls the move ctor of SSTable.
-
-//         // TODO: delete this
-//         auto fileManager = std::make_unique<SSTableManagerImpl>(m_directoryPath, fileName, m_systemContext);
-
-//         m_ssTableManagers.push_back(std::move(fileManager));
-//     }
-
-//     return std::nullopt;
-// };
 
 // NEW API
 std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const

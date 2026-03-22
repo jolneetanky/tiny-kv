@@ -1,41 +1,56 @@
 #include "api/command_handler.h"
 
-Response<std::string> CommandHandler::execute(
-    const std::string &cmd, const std::vector<std::string> &args)
+protocol::Response CommandHandler::execute(
+    const protocol::Command &cmd, const std::vector<std::string> &args)
 {
-    std::string lowerCmd = cmd;
-    std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
+    switch (cmd)
+    {
+    case protocol::Command::GET:
+    {
+        if (args.empty())
+            return {false, "Usage: GET <key>", std::nullopt};
+        return db_.get(args[0]);
+    }
 
-    if (lowerCmd == "put")
+    case protocol::Command::PUT:
     {
         if (args.size() < 2)
             return {false, "Usage: PUT <key> <value>"};
         auto res = db_.put(args[0], args[1]);
-        if (res.success)
+        if (res.ok)
         {
-            return {res.success, "OK"};
+            return {true, "OK", std::nullopt};
         }
-        return {res.success, res.message};
+        return {false, res.message, std::nullopt};
     }
 
-    if (lowerCmd == "get")
-    {
-        if (args.empty())
-            return {false, "Usage: GET <key>"};
-        return db_.get(args[0]);
-    }
-
-    if (lowerCmd == "del")
+    case protocol::Command::DEL:
     {
         if (args.empty())
             return {false, "Usage: DEL <key>"};
         auto res = db_.del(args[0]);
-        if (res.success)
+        if (res.ok)
         {
-            return {res.success, "OK"};
+            return {true, "OK", std::nullopt};
         }
-        return {res.success, res.message};
+        return {false, res.message, std::nullopt};
     }
 
-    return {false, "Unknown command"};
+    case protocol::Command::_FLUSH:
+    {
+        protocol::Response res = db_.forceFlushForTests();
+        if (res.ok)
+        {
+            return {true, "OK", std::nullopt};
+        }
+        return {false, res.message, std::nullopt};
+    }
+
+    case protocol::Command::EXIT:
+        return {true, "Bye", std::nullopt};
+
+    default:
+        return {false, "Unknown command", std::nullopt};
+        break;
+    }
 }

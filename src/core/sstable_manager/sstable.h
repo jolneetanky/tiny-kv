@@ -16,7 +16,7 @@ SSTable DISK LAYOUT:
 
 /*
 This class manages an SSTable on disk.
-It serves as the logical representation of an SSTable on disk.
+It serves as the in-memory representation of an SSTable.
 
 Should this class have a static method to initialize from disk?
 -- No, that's not the responsibility of this class. This class simply represents an SSTable
