@@ -27,6 +27,7 @@ namespace protocol
     struct Response
     {
         bool ok = false;
+        std::string message;
         std::optional<std::string> data;
     };
 }
@@ -35,14 +36,19 @@ namespace protocol
 Notes:
 
 - `Response` should probably not be templated at call sites for v1. Keep it concrete:
-  - `bool success`
-  - `std::optional<T> data` - currently stores either the data itself (eg. for GET requests), or the error message if any. This can lead to some ambiguity.
+  - `bool ok`
+  - `std::string message`
+  - `std::optional<std::string> data`
+- `message` is always populated. It stores human-readable success/error context.
+- `data` is optional and is reserved for command payloads, eg. GET values. Error messages should not be stored in `data`.
 - Keep protocol text-based initially for easy testing via `nc`/Python.
 
 ### 1.1) Codec
 
 - Codec encodes/decodes a Request/Response into strings, to be transmitted across the wire.
-- The strings are newline-delimited (ie. newline-terminated) text like `GET key\n`, `OK value\n`, `ERR message\n`
+- The strings are newline-delimited (ie. newline-terminated) text.
+- Requests stay simple whitespace-delimited text like `GET key\n`.
+- Responses use keyed length-prefixed fields so `message` and `data` can contain spaces.
 
 #### 1.1.1) Request encoding/decoding
 
@@ -64,14 +70,27 @@ General shape: `<COMMAND> <arg0> <arg1> ...\n`
 
 ##### String representation
 
-- Previous String represenation: `<STATUS> <data>\n` (Eg. `OK world\n`, `ERR key does not exist\n`, etc.)
-- (TODO) Reformat to `<STATUS> <message_len> <message> <data_len> <data>\n`
+- Previous string representation: `<STATUS> <data>\n` (eg. `OK world\n`, `ERR key does not exist\n`).
+- New string representation:
+
+```
+status=<STATUS> message=<message_len>:<message> data=<data_len>:<data>\n
+```
+
+- `STATUS` is either `OK` or `ERR`.
+- `message_len` and `data_len` are byte counts.
+- `message` is always encoded.
+- `data` is always encoded as a field, but `data=0:` means `Response::data = std::nullopt`.
+- `data_len > 0` means decode exactly that many bytes into `Response::data`.
+- The trailing newline is still the frame delimiter.
+
 - Examples:
 
 ```
 status=OK message=2:OK data=5:world\n
-status=OK message=16:Successfully PUT data=null\n
-status=ERR message=18:Key does not exist data=null\n
+status=OK message=2:OK data=0:\n
+status=ERR message=18:Key does not exist data=0:\n
+status=OK message=13:read complete data=11:hello world\n
 ```
 
 ##### C++ struct
@@ -79,15 +98,17 @@ status=ERR message=18:Key does not exist data=null\n
 ```cpp
 struct Response
 {
-bool ok = false;
-std::string message;
-std::optional<std::string> data;
+    bool ok = false;
+    std::string message;
+    std::optional<std::string> data;
 };
 ```
 
 ##### Implementation
 
 - Refer to `src/api/codec.h` and `src/api/codec.cpp` for implementation details.
+- `encodeResponse()` serializes `ok` as `status=OK` or `status=ERR`, always writes `message`, and writes `data=0:` when `data` is absent.
+- `decodeResponseLine()` validates the keyed fields, reads exactly the declared byte lengths, populates `message`, and sets `data` only when `data_len > 0`.
 
 ## 2) Approaches
 
