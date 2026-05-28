@@ -122,7 +122,7 @@ std::optional<Error> MemTableImpl::flushToDisk()
     if (!optEntries)
     {
         TINYKV_LOG("[MemTableImpl.flushToDisk()] Failed to get all entries from memtable");
-        return Error{"Failed to get all entries from memtable"};
+        return Error{"[MemTableImpl.flushToDisk()] Failed to get all entries from memtable"};
     }
 
     std::vector<const Entry *> entryPtrs; // the pointers point to entries in the stack omg...

@@ -6,14 +6,6 @@
 #include "types/sstable_file.h"
 
 /*
-SSTable DISK LAYOUT:
-
-| Entry 0 | Entry 1 | ... | Entry N |
-| timestamp (sizeof TimestampType) |
-| file_num (sizeof FileNumber) |
-*/
-
-/*
 Utility class that reads an SSTable on disk, parsing it into an SSTable and returns this SSTable instance.
 */
 class SSTableReader

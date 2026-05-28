@@ -6,6 +6,7 @@
 #include <vector>
 #include "core/db.h"
 #include "core/storage_manager/storage_manager_impl.h"
+#include "api/message.h"
 
 // This class handles commands in the form of (cmd, args).
 // It is the API through which users communicate with the system.
@@ -15,7 +16,7 @@ public:
     CommandHandler(DB &db) : db_{db} {};
 
     // executes a given command
-    Response<std::string> execute(const std::string &cmd, const std::vector<std::string> &args);
+    protocol::Response execute(const protocol::Command &cmd, const std::vector<std::string> &args);
 
 private:
     DB &db_;

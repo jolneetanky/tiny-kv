@@ -6,12 +6,12 @@
 SSTable SSTableReader::read(const std::string &full_path)
 {
     // read binary from file and store in a string buffer
-    TINYKV_LOG("[SSTableReader.decode()]");
+    TINYKV_LOG("[SSTableReader.read()]");
     std::string serializedData; // stores the binary. `readBinaryFromFile` will modify this item
 
     if (!_readBinaryFromFile(full_path, serializedData))
     {
-        std::cerr << "[SSTableReader.decode()] Failed to read binary from file" << std::endl;
+        std::cerr << "[SSTableReader.read()] Failed to read binary from file" << std::endl;
         throw std::runtime_error("SSTableReader::read(): Failed to read binary from file");
     }
 
@@ -40,17 +40,19 @@ SSTable SSTableReader::read(const std::string &full_path)
     // deserialize each entry.
     size_t bytesRead{0};
     size_t offset{0};
-    size_t serializedEntriesSize{serializedData.size() - sizeof(TimestampType)};
+    size_t serializedEntriesSize{serializedData.size() - timestamp_size - file_num_size};
     std::vector<Entry> entries;
 
+    int i = 0;
     while (offset < serializedEntriesSize)
     {
         const char *data{serializedData.data()};
-        Entry entry{_deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead)};
+        entries.emplace_back(_deserializeEntry(data + offset, serializedEntriesSize - offset, bytesRead));
+
+        TINYKV_LOG("[SSTableReader.decode()]" << " (" << entries[i].key << ", " << entries[i].val << ", " << entries[i] << ")");
 
         offset += bytesRead;
-
-        TINYKV_LOG("[SSTableReader.decode()]" << " (" << entry.key << ", " << entry.val << ", " << entry.tombstone << ")");
+        i++;
     }
 
     SSTableMetadata metadata(file_num, timestamp, entries[0].key, entries[entries.size() - 1].key);

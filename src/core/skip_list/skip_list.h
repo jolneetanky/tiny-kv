@@ -15,6 +15,8 @@ public:
     virtual std::optional<std::vector<Entry>> getAll() const = 0;
     virtual std::optional<Error> clear() = 0;
     virtual std::optional<int> getLength() const = 0;
+
+    virtual ~SkipList() = default;
 };
 
 #endif

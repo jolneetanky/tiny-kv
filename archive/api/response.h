@@ -1,3 +1,4 @@
+/*
 #ifndef API_RESPONSE_H
 #define API_RESPONSE_H
 
@@ -5,12 +6,11 @@
 
 // Shape of our DB response, think of it like what's exposed to the frontend
 // Generic version, for responses with data
-template <typename T>
 struct Response
 {
     bool success;
     std::string message;
-    std::optional<T> data; // Eg. for GET response
+    std::optional<std::string> data; // Eg. for GET response
 
     Response(bool success = true, std::string message = "", std::optional<T> val = std::nullopt) : success{success}, message{std::move(message)}, data{std::move(val)} {};
 };
@@ -26,3 +26,4 @@ struct Response<void>
 };
 
 #endif
+*/

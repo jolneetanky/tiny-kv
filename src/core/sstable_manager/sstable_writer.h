@@ -16,8 +16,11 @@ class SSTableWriter
 {
 public:
     /*
-    This method writes entries to disk as an SSTable. It has no side effects; it just returns an SSTable.
-    So any class that uses this knows that it's writing an SSTable.
+    This method writes entries to disk as an SSTable.
+    Side effect: After this, it is guaranteed that the SSTable file is actually written to disk. Specifically, it is written to `full_path`.
+    It will overwrite any existing file at `full_path`.
+    For safety, the caller should be sure that no existing SSTable already exists at `full_path` before calling `SSTableWriter::write(full_path, ...)`
+    Returns `SSTableMetadata`.
     */
     SSTableMetadata write(const std::string &full_path, std::vector<Entry> &entries, TimestampType timestamp, FileNumber file_num);
 

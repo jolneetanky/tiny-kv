@@ -26,12 +26,12 @@ public:
            std::unique_ptr<StorageManagerImpl> storageManager,
            std::unique_ptr<MemTableImpl> memTable);
 
-    Response<void> put(std::string key, std::string val) override;
-    Response<std::string> get(std::string key) const override;
-    Response<void> del(std::string key) override;
+    protocol::Response put(std::string key, std::string val) override;
+    protocol::Response get(std::string key) const override;
+    protocol::Response del(std::string key) override;
 
-    Response<void> forceCompactForTests(); // for testing purposes; force memtable compaction
-    Response<void> forceFlushForTests();
+    protocol::Response forceCompactForTests() override; // for testing purposes; force memtable compaction
+    protocol::Response forceFlushForTests() override;
 };
 
 #endif

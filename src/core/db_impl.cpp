@@ -12,25 +12,25 @@ DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
 {
 }
 
-Response<void> DbImpl::put(std::string key, std::string val)
+protocol::Response DbImpl::put(std::string key, std::string val)
 {
     std::optional<Error> errOpt{(*m_memTable).put(key, val)};
 
     if (errOpt)
     {
-        return Response<void>(false, errOpt->error);
+        return protocol::Response{false, errOpt->error, std::nullopt};
     }
 
-    return Response<void>(true, "Successfully PUT key " + key + " in DB");
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
-Response<std::string> DbImpl::get(std::string key) const
+protocol::Response DbImpl::get(std::string key) const
 {
     std::optional<Entry> optEntry{(*m_memTable).get(key)};
 
     if (optEntry && optEntry->tombstone)
     {
-        return Response<std::string>(false, "Key does not exist", std::nullopt);
+        return protocol::Response{false, "Key does not exist", std::nullopt};
     }
 
     if (!optEntry)
@@ -39,35 +39,33 @@ Response<std::string> DbImpl::get(std::string key) const
 
         if (!optEntry)
         {
-            return Response<std::string>(false, "Key does not exist", std::nullopt);
+            return protocol::Response{false, "Key does not exist", std::nullopt};
         }
     }
 
-    return Response<std::string>(true, "", optEntry.value().val);
+    return protocol::Response{true, "OK", optEntry.value().val};
 }
 
-Response<void> DbImpl::del(std::string key)
+protocol::Response DbImpl::del(std::string key)
 {
     std::optional<Error> errOpt{m_memTable->del(key)};
 
     if (errOpt)
     {
-        // std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
-        return Response<void>(false, "Failed to DELETE key: " + errOpt->error);
+        return protocol::Response{false, "Failed to DELETE key: " + errOpt->error, std::nullopt};
     }
 
-    // std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
-    return Response<void>(true, "Successfully DELETE key " + key);
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
-Response<void> DbImpl::forceCompactForTests()
+protocol::Response DbImpl::forceCompactForTests()
 {
     m_storageManager->compact();
-    return Response<void>(true, "Successfully compacted DB");
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
-Response<void> DbImpl::forceFlushForTests()
+protocol::Response DbImpl::forceFlushForTests()
 {
     m_memTable->flushToDisk();
-    return Response<void>(true, "Successfully flushed memtable to disk");
+    return protocol::Response{true, "OK", std::nullopt};
 }

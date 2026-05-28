@@ -25,21 +25,22 @@ namespace
 
         void TearDown() override
         {
-            // cleanupStorage();
+            cleanupStorage();
         }
     };
 
 } // namespace
 
+// TEST 1: general put and get (in-memory, not yet flushed)
 TEST_F(DbStorageTest, PutAndGet)
 {
     std::unique_ptr<DbImpl> db = DbFactory::createDbForTests(); // dies at the end of the scope
 
     auto res1 = db->put("hello", "world");
-    EXPECT_TRUE(res1.success);
+    EXPECT_TRUE(res1.ok);
 
     auto res2 = db->get("hello");
-    EXPECT_TRUE(res2.success);
+    EXPECT_TRUE(res2.ok);
     EXPECT_EQ(res2.data, "world");
 }
 
@@ -68,41 +69,42 @@ TEST_F(DbStorageTest, FlushKeepsLatestUpdates)
 {
     auto db = DbFactory::createDbForTests();
 
-    ASSERT_TRUE(db->put("key", "old").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("key", "old").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    ASSERT_TRUE(db->put("key", "new").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("key", "new").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
     auto result = db->get("key");
-    EXPECT_TRUE(result.success);
+    EXPECT_TRUE(result.ok);
     EXPECT_EQ(result.data, "new");
 }
 
+// TEST #4 - flush respects delectes
+// put -> flush
+// del -> flush
+// get -> expect not to find the key, as it has been deleted
 TEST_F(DbStorageTest, FlushRespectsDeletes)
 {
     auto db = DbFactory::createDbForTests();
 
-    ASSERT_TRUE(db->put("ghost", "value").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("ghost", "value").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    ASSERT_TRUE(db->del("ghost").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->del("ghost").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
     auto result = db->get("ghost");
-    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.ok);
     EXPECT_FALSE(result.data.has_value());
 }
-
-// TEST #3 (flushes respect updates): write -> flush -> write -> flush -> get
-
-// TEST #4 (flushes respect deletes): write -> flush -> del -> flush -> get
 
 // Tests for compaction should focus on what happens to keys that are ON DISK.
 // That's why everytime I modify a value, I flush it.
 // If I want soemthing to appear with the tombstone value on disk, I write the key -> flush -> delete key -> flush.
 
-// varied key order
+// TEST #5: compaction preserves entries
+// honestly should test with overwriting keys
 TEST_F(DbStorageTest, CompactionPreservesEntries)
 {
     auto db = DbFactory::createDbForTests();
@@ -110,52 +112,64 @@ TEST_F(DbStorageTest, CompactionPreservesEntries)
     db->put("b", "1");
     db->put("a", "2");
     db->put("c", "3");
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
     db->put("f", "4");
     db->put("e", "5");
     db->put("g", "6");
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    EXPECT_TRUE(db->forceCompactForTests().success);
+    EXPECT_TRUE(db->forceCompactForTests().ok);
 
     EXPECT_EQ(db->get("b").data, "1");
     EXPECT_EQ(db->get("c").data, "3");
     EXPECT_EQ(db->get("e").data, "5");
 }
 
+// TEST #6 - compaction keeps the latest overwrite
 // Because both keys are are they same, they lie in the same key range
-// So this test makes sure that the latest overwrite is reflected.
+// So this test makes sure that the latest overwrite is always reflected.
 TEST_F(DbStorageTest, CompactionKeepsLatestOverwrite)
 {
     auto db = DbFactory::createDbForTests();
 
-    ASSERT_TRUE(db->put("key", "old").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("key", "old").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    ASSERT_TRUE(db->put("key", "new").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("key", "new").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    EXPECT_TRUE(db->forceCompactForTests().success);
+    EXPECT_TRUE(db->forceCompactForTests().ok);
 
     auto result = db->get("key");
-    EXPECT_TRUE(result.success);
+    EXPECT_TRUE(result.ok);
     EXPECT_EQ(result.data, "new");
 }
 
+// TEST #7 - compaction respects deletes
+// put->flush
+// del->flush
+// compact
+// get(key), the key should not be found.
 TEST_F(DbStorageTest, CompactionRespectsDeletes)
 {
     auto db = DbFactory::createDbForTests();
 
-    ASSERT_TRUE(db->put("ghost", "value").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->put("ghost", "value").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    ASSERT_TRUE(db->del("ghost").success);
-    EXPECT_TRUE(db->forceFlushForTests().success);
+    ASSERT_TRUE(db->del("ghost").ok);
+    EXPECT_TRUE(db->forceFlushForTests().ok);
 
-    EXPECT_TRUE(db->forceCompactForTests().success);
+    EXPECT_TRUE(db->forceCompactForTests().ok);
 
     auto result = db->get("ghost");
-    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.ok);
     EXPECT_FALSE(result.data.has_value());
 }
+
+// TODO: Write test for SSTableReader.write()
+// TODO: Write test for SSTableReader.read()
+// Reader should read what was just written
+// Serialize it to a proper SSTable file
+// And we should be able to iterate through and list all entries that were written.

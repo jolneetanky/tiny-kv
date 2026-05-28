@@ -1,11 +1,12 @@
-# Collect all .cpp files under src/, except cli.cpp and main.cpp
+# Collect all .cpp files under src/, except executable entrypoints
 file(GLOB_RECURSE TINYKV_SRC
   "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
 )
 
-# Exclude cli.cpp and main.cpp from core library sources
-list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/cli\\.cpp$")
+# Exclude executable entrypoints from core library sources
+list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/server_main\\.cpp$")
 list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/main\\.cpp$")
+list(FILTER TINYKV_SRC EXCLUDE REGEX ".*/cli_main\\.cpp$")
 
 # Build tinykv_core library
 add_library(tinykv_core STATIC ${TINYKV_SRC})
@@ -18,11 +19,23 @@ target_include_directories(tinykv_core PUBLIC
 
 # disable for benchmarks, enable when u want
 target_compile_definitions(tinykv_core
-  PUBLIC TINYKV_ENABLE_LOGGING=0
+  PUBLIC TINYKV_ENABLE_LOGGING=1
 )
 
-# link spdlog for logging
-target_link_libraries(tinykv_core
-  PUBLIC
-    spdlog::spdlog
+# CLI executable
+add_executable(tinykv_cli
+  ${CMAKE_CURRENT_LIST_DIR}/cli_main.cpp
+)
+target_link_libraries(tinykv_cli
+  PRIVATE
+    tinykv_core
+)
+
+# TCP server executable (session + connection skeleton)
+add_executable(tinykv_server
+  ${CMAKE_CURRENT_LIST_DIR}/server_main.cpp
+)
+target_link_libraries(tinykv_server
+  PRIVATE
+    tinykv_core
 )

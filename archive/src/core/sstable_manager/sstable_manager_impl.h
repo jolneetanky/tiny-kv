@@ -8,7 +8,6 @@
 #include "types/error.h"
 #include "types/timestamp.h"
 #include "types/sstable_file.h"
-#include "core/sstable_manager/sstable_manager.h"
 #include "core/bloom_filter/bloom_filter.h"
 #include <cstdint> // for uint64_t
 

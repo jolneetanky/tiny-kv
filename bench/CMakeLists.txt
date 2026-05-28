@@ -1,19 +1,17 @@
-# bench/CMakeLists.txt
-
-add_executable(bench_compaction
-  bench_compaction.cpp
+add_executable(bench_read_heavy
+  bench_read_heavy.cpp
 )
 
-target_include_directories(bench_compaction
+target_include_directories(bench_read_heavy
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(bench_compaction
+target_link_libraries(bench_read_heavy
   PRIVATE
     tinykv_core
     benchmark::benchmark
+    benchmark::benchmark_main
 )
 
-# Optional: nicer warnings for benchmarks
-target_compile_options(bench_compaction PRIVATE -Wall -Wextra)
+target_compile_options(bench_read_heavy PRIVATE -Wall -Wextra)

@@ -3,17 +3,21 @@
 #define DB_H
 
 #include <iostream>
-#include "api/response.h"
+#include "api/message.h"
 
 // This class is the external, client-facing API.
 class DB
 {
 public:
-    virtual Response<void> put(std::string key, std::string val) = 0;
+    virtual protocol::Response put(std::string key, std::string val) = 0;
 
-    virtual Response<std::string> get(std::string key) const = 0;
+    virtual protocol::Response get(std::string key) const = 0;
 
-    virtual Response<void> del(std::string key) = 0;
+    virtual protocol::Response del(std::string key) = 0;
+
+    // for testing purposes
+    virtual protocol::Response forceCompactForTests() = 0;
+    virtual protocol::Response forceFlushForTests() = 0;
 
     virtual ~DB() = default;
 };
