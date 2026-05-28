@@ -8,7 +8,11 @@ class Session
 {
 public:
     Session(Connection &conn, CommandHandler &handler);
-    void run(); // starts an infinite loop that listens for requests from a particular Connection, handles the request, and sends the response back to the Connection.
+
+    // starts an infinite loop that listens for requests from a particular Connection,
+    // handles the request,
+    // and sends the response back to the Connection.
+    void run();
 
 private:
     Connection &conn_;

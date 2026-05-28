@@ -9,10 +9,10 @@ target_link_libraries(tinykv_tests
       gtest_main
 )
 
-target_link_libraries(tinykv_tests
-    PRIVATE tinykv_core gtest gtest_main
-)
-
 # automatically discover tests so CTest treats each GoogleTest case as an indiv CTest entry
 include(GoogleTest)
-gtest_discover_tests(tinykv_tests)
+gtest_discover_tests(
+    tinykv_tests
+    DISCOVERY_MODE PRE_TEST
+    DISCOVERY_TIMEOUT 5
+)

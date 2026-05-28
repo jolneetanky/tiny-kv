@@ -66,7 +66,7 @@ int connectToServer(const char *host, uint16_t port)
     return fd;
 }
 
-// this program:
+// this client program:
 // 1. connects to tinyKV server via TCP
 // 2. runs a REPL that
 // - reads client commands, encodes it and sends to server over the connection

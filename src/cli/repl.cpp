@@ -48,14 +48,12 @@ int runRepl(Connection &conn)
             return 1;
         }
 
-        // std::cout << rawRes.value() << "\n";
-
         // parse response
         protocol::Response res;
-        std::string parseErr;
-        if (!protocol::decodeResponseLine(rawRes.value(), res, parseErr))
+        std::string responseParseErr;
+        if (!protocol::decodeResponseLine(rawRes.value(), res, responseParseErr))
         {
-            std::cerr << "ERR: failed to decode server response: " << parseErr << "\n";
+            std::cerr << "ERR: failed to decode server response: " << responseParseErr << "\n";
             return 1;
         }
 
@@ -72,12 +70,7 @@ int runRepl(Connection &conn)
         }
         else
         {
-            std::cout << "ERR";
-            if (res.data.has_value())
-            {
-                std::cout << ": " << res.data.value();
-            }
-            std::cout << "\n";
+            std::cout << "ERR: " << res.message << "\n";
         }
 
         if (req.command == protocol::Command::EXIT)

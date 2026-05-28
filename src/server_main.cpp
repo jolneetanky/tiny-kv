@@ -79,6 +79,9 @@ std::optional<uint16_t> readPortFromEnv()
     return static_cast<uint16_t>(parsed);
 }
 
+// this program starts the tinyKV server,
+// and listesn for client requests.
+// when a client request comes in, create a separate Session for the client.
 int main()
 {
     constexpr uint16_t kDefaultPort = 6379;
@@ -109,11 +112,5 @@ int main()
             Session session(conn, handler); // Created in thread's stack
             session.run(); })
             .detach();
-
-        // std::thread([clientFd, &handler]() mutable {
-        //     FdConnection conn(clientFd);
-        //     Session session(conn, handler);
-        //     session.run();
-        // }).detach(); // detach()
     }
 }

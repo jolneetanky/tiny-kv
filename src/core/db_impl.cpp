@@ -18,10 +18,10 @@ protocol::Response DbImpl::put(std::string key, std::string val)
 
     if (errOpt)
     {
-        return protocol::Response{false, errOpt->error};
+        return protocol::Response{false, errOpt->error, std::nullopt};
     }
 
-    return protocol::Response{true, "Successfully PUT key " + key + " in DB"};
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
 protocol::Response DbImpl::get(std::string key) const
@@ -30,7 +30,7 @@ protocol::Response DbImpl::get(std::string key) const
 
     if (optEntry && optEntry->tombstone)
     {
-        return protocol::Response{false, "Key does not exist"};
+        return protocol::Response{false, "Key does not exist", std::nullopt};
     }
 
     if (!optEntry)
@@ -39,11 +39,11 @@ protocol::Response DbImpl::get(std::string key) const
 
         if (!optEntry)
         {
-            return protocol::Response{false, "Key does not exist"};
+            return protocol::Response{false, "Key does not exist", std::nullopt};
         }
     }
 
-    return protocol::Response{true, optEntry.value().val};
+    return protocol::Response{true, "OK", optEntry.value().val};
 }
 
 protocol::Response DbImpl::del(std::string key)
@@ -52,22 +52,20 @@ protocol::Response DbImpl::del(std::string key)
 
     if (errOpt)
     {
-        // std::cout << "[DbImpl.del] Failed to DELETE key: " << errOpt->error << "\n";
-        return protocol::Response{false, "Failed to DELETE key: " + errOpt->error};
+        return protocol::Response{false, "Failed to DELETE key: " + errOpt->error, std::nullopt};
     }
 
-    // std::cout << "[DbImpl] Successfully deleted key " << key << "\n";
-    return protocol::Response{true, "Successfully DELETE key " + key};
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
 protocol::Response DbImpl::forceCompactForTests()
 {
     m_storageManager->compact();
-    return protocol::Response{true, "Successfully compacted DB"};
+    return protocol::Response{true, "OK", std::nullopt};
 }
 
 protocol::Response DbImpl::forceFlushForTests()
 {
     m_memTable->flushToDisk();
-    return protocol::Response{true, "Successfully flushed memtable to disk"};
+    return protocol::Response{true, "OK", std::nullopt};
 }

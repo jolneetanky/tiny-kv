@@ -1,30 +1,93 @@
 Main problem: how will the server listen for client connections via TCP, and handle each request accordingly?
 
-## 1) Protocol
+## 1) Protocol and Codecs
 
 The protocol defines the shape of each Request and Response.
 
 ```cpp
-struct Request {
-    std::string command;              // GET/PUT/DEL
-    std::vector<std::string> args;    // ["key"], ["key","value"], ...
-};
-
-struct Response
+// src/api/message.h
+namespace protocol
 {
-    bool success;
-    std::string message;
-    std::optional<T> data; // Eg. for GET response
-};
+    enum class Command
+    {
+        PUT,
+        GET,
+        DEL,
+        EXIT,
+        _FLUSH, // admin command to manually trigger flush to disk (otherwise, flushes happen when memtable gets full)
+        UNKNOWN,
+    };
+
+    struct Request
+    {
+        Command command;
+        std::vector<std::string> args;
+    };
+
+    struct Response
+    {
+        bool ok = false;
+        std::optional<std::string> data;
+    };
+}
 ```
 
 Notes:
 
 - `Response` should probably not be templated at call sites for v1. Keep it concrete:
   - `bool success`
-  - `std::string code` (`"OK"`, `"NOT_FOUND"`, `"ERR"`)
-  - `std::string payload` (value or error text)
+  - `std::optional<T> data` - currently stores either the data itself (eg. for GET requests), or the error message if any. This can lead to some ambiguity.
 - Keep protocol text-based initially for easy testing via `nc`/Python.
+
+### 1.1) Codec
+
+- Codec encodes/decodes a Request/Response into strings, to be transmitted across the wire.
+- The strings are newline-delimited (ie. newline-terminated) text like `GET key\n`, `OK value\n`, `ERR message\n`
+
+#### 1.1.1) Request encoding/decoding
+
+##### String representation
+
+General shape: `<COMMAND> <arg0> <arg1> ...\n`
+
+1. `GET <key>\n`
+2. `PUT <key> <val>\n`
+3. `DEL <key>\n`
+
+##### C++ struct
+
+##### Implementation
+
+- Refer to `src/api/codec.h` and `src/api/codec.cpp` for implementation details.
+
+#### 1.1.2) Response encoding/decoding
+
+##### String representation
+
+- Previous String represenation: `<STATUS> <data>\n` (Eg. `OK world\n`, `ERR key does not exist\n`, etc.)
+- (TODO) Reformat to `<STATUS> <message_len> <message> <data_len> <data>\n`
+- Examples:
+
+```
+status=OK message=2:OK data=5:world\n
+status=OK message=16:Successfully PUT data=null\n
+status=ERR message=18:Key does not exist data=null\n
+```
+
+##### C++ struct
+
+```cpp
+struct Response
+{
+bool ok = false;
+std::string message;
+std::optional<std::string> data;
+};
+```
+
+##### Implementation
+
+- Refer to `src/api/codec.h` and `src/api/codec.cpp` for implementation details.
 
 ## 2) Approaches
 
@@ -63,7 +126,6 @@ Cons:
 `Session.run()` does:
 
 1. Spins up a TCP listening server.
-   (Not really sure how this part works, will need your help)
 2. Listens for incoming connections, spawns a worker thread to handle it.
 3. Worker will listen on that fd for bytes.
 4. Worker decodes bytes into a Request, via `request = codec::decodeLine(line)`
@@ -121,54 +183,6 @@ Main flow for one request-response loop per session:
 4. Response res = RequestHandler(req)
 5. Codec::encodeResopnse(res)
 6. Write request to connections vis `connection.writeAll()`
-
-#### Protocol and Codecs
-
-- Protocol defines the shape of each Request and Response.
-- Codec encodes/decodes a Request/Response into raw bytes, to be transmitted across the wire.
-  `src/protocol/message.h`
-
-```cpp
-#pragma once
-#include <string>
-#include <vector>
-
-struct Request {
-    std::string command;              // GET/PUT/DEL
-    std::vector<std::string> args;    // ["key"], ["key","value"], ...
-};
-
-struct Response {
-    bool ok;
-    std::string message;              // "OK", value, or error text
-};
-```
-
-`/src/protocol/codec.h`
-
-```cpp
-#pragma once
-#include "message.h"
-#include <string>
-
-namespace protocol {
-// Start simple: one line command, newline-terminated:
-// "GET key\n", "PUT key value\n"
-bool decodeLine(const std::string& line, Request& outReq, std::string& err);
-std::string encodeResponse(const Response& resp); // "OK value\n" / "ERR msg\n"
-}
-```
-
-Design guidance:
-
-- Keep parser strict and predictable:
-  - uppercase command normalization
-  - fixed arg counts (`GET=1`, `PUT=2`, `DEL=1`)
-  - return protocol errors, do not silently accept malformed input
-- Handle partial reads in `readLine` (buffer until `\n`).
-- Decide escaping rules early:
-  - v1 simplest: no spaces in keys/values
-  - v2: support quoted args or RESP-style bulk strings
 
 #### `Connection` class
 

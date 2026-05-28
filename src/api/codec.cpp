@@ -1,11 +1,80 @@
 #include "api/codec.h"
 
-#include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <sstream>
+#include <string_view>
 
 namespace protocol
 {
+    namespace
+    {
+        bool consumeLiteral(const std::string &line, std::size_t &pos, std::string_view literal)
+        {
+            if (line.compare(pos, literal.size(), literal) != 0)
+            {
+                return false;
+            }
+            pos += literal.size();
+            return true;
+        }
+
+        bool parseLengthPrefixedField(
+            const std::string &line,
+            std::size_t &pos,
+            std::string_view fieldName,
+            std::string &out,
+            std::string &err)
+        {
+            if (!consumeLiteral(line, pos, fieldName))
+            {
+                err = "expected field " + std::string(fieldName);
+                return false;
+            }
+
+            const std::size_t lengthStart = pos;
+            while (pos < line.size() && std::isdigit(static_cast<unsigned char>(line[pos])))
+            {
+                ++pos;
+            }
+
+            if (lengthStart == pos)
+            {
+                err = "expected length for field " + std::string(fieldName);
+                return false;
+            }
+
+            if (pos >= line.size() || line[pos] != ':')
+            {
+                err = "expected ':' after length for field " + std::string(fieldName);
+                return false;
+            }
+
+            std::size_t length = 0;
+            try
+            {
+                length = std::stoull(line.substr(lengthStart, pos - lengthStart));
+            }
+            catch (const std::exception &)
+            {
+                err = "invalid length for field " + std::string(fieldName);
+                return false;
+            }
+
+            ++pos; // skip ':'
+
+            if (line.size() - pos < length)
+            {
+                err = "payload shorter than declared length for field " + std::string(fieldName);
+                return false;
+            }
+
+            out = line.substr(pos, length);
+            pos += length;
+            return true;
+        }
+    } // namespace
+
     static Command parseCommand(std::string cmd)
     {
         std::transform(cmd.begin(), cmd.end(), cmd.begin(),
@@ -99,49 +168,107 @@ namespace protocol
     }
 
     // IMPT: end with "\n"
-    // looks like eg. "OK <value>" / "ERR <msg>"
+    // looks like eg. "status=OK message=2:OK data=5:value\n"
     std::string encodeResponse(const Response &resp)
     {
-        const std::string prefix = resp.ok ? "OK" : "ERR";
-        if (!resp.data.has_value())
+        const std::string status = resp.ok ? "OK" : "ERR";
+        const std::string &data = resp.data.value_or("");
+
+        std::string encoded;
+        encoded += "status=";
+        encoded += status;
+        encoded += " message=";
+        encoded += std::to_string(resp.message.size());
+        encoded += ":";
+        encoded += resp.message;
+        encoded += " data=";
+        encoded += std::to_string(resp.data.has_value() ? data.size() : 0);
+        encoded += ":";
+        if (resp.data.has_value())
         {
-            return prefix + "\n";
+            encoded += data;
         }
-        return prefix + " " + resp.data.value() + "\n";
+        encoded += "\n";
+        return encoded;
     }
 
     // string -> Response
     bool decodeResponseLine(const std::string &line, protocol::Response &outRes, std::string &err)
     {
+        outRes.ok = false;
+        outRes.message.clear();
         outRes.data.reset();
 
-        const std::size_t spacePos = line.find(' ');
-        const std::string_view status(line.data(), spacePos == std::string::npos ? line.size() : spacePos);
+        std::size_t pos = 0;
+        // check if status field is present
+        if (!consumeLiteral(line, pos, "status="))
+        {
+            err = "expected status field";
+            return false;
+        }
 
+        const std::size_t statusStart = pos;
+        while (pos < line.size() && line[pos] != ' ')
+        {
+            ++pos;
+        }
+
+        const std::string status = line.substr(statusStart, pos - statusStart);
         if (status == "OK")
         {
             outRes.ok = true;
-            if (spacePos != std::string::npos)
-            {
-                outRes.data = line.substr(spacePos + 1);
-            }
-            err.clear();
-            return true;
         }
-
-        if (status == "ERR")
+        else if (status == "ERR")
         {
             outRes.ok = false;
-            if (spacePos != std::string::npos)
-            {
-                outRes.data = line.substr(spacePos + 1);
-            }
-            err.clear();
-            return true;
+        }
+        else
+        {
+            err = "invalid response status";
+            return false;
         }
 
-        err = "invalid response status";
-        outRes.ok = false;
-        return false;
+        if (!consumeLiteral(line, pos, " "))
+        {
+            err = "expected space after status field";
+            return false;
+        }
+
+        std::string message;
+        if (!parseLengthPrefixedField(line, pos, "message=", message, err))
+        {
+            return false;
+        }
+        outRes.message = std::move(message);
+
+        if (!consumeLiteral(line, pos, " "))
+        {
+            err = "expected space after message field";
+            return false;
+        }
+
+        std::string data;
+        if (!parseLengthPrefixedField(line, pos, "data=", data, err))
+        {
+            return false;
+        }
+        if (!data.empty())
+        {
+            outRes.data = std::move(data);
+        }
+
+        if (pos < line.size() && line[pos] == '\n')
+        {
+            ++pos;
+        }
+
+        if (pos != line.size())
+        {
+            err = "unexpected trailing response bytes";
+            return false;
+        }
+
+        err.clear();
+        return true;
     }
 } // namespace protocol

@@ -7,8 +7,6 @@
 //
 namespace protocol
 {
-    // Start simple: one line command, newline-terminated:
-    // "GET key\n", "PUT key value\n"
     static Command parseCommand(std::string cmd); // static free function gives internal linkage. Every cpp file that defines `parseCommand()` has its own copy of the function. Be asue this is a private helper function only used by `codec.cpp`.
     // string -> Request
     bool decodeLine(const std::string &line, protocol::Request &outReq, std::string &err);
@@ -16,7 +14,7 @@ namespace protocol
     std::string encodeRequest(const protocol::Request &req);
 
     // Response -> string
-    std::string encodeResponse(const protocol::Response &resp); // "OK <message>\n" / "ERR <message>\n"
+    std::string encodeResponse(const protocol::Response &resp); // "status=OK message=2:OK data=5:value\n"
     // string -> Response
     bool decodeResponseLine(const std::string &line, protocol::Response &outRes, std::string &err);
 }

@@ -2,6 +2,8 @@
 
 #include "api/codec.h"
 
+#include <optional>
+
 Session::Session(Connection &conn, CommandHandler &handler) : conn_{conn}, handler_{handler} {}
 
 void Session::run()
@@ -18,7 +20,7 @@ void Session::run()
         std::string parseErr;
         if (!protocol::decodeLine(line.value(), req, parseErr))
         {
-            conn_.writeAll(protocol::encodeResponse({false, parseErr}));
+            conn_.writeAll(protocol::encodeResponse({false, parseErr, std::nullopt}));
             continue;
         }
 

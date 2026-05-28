@@ -39,10 +39,25 @@ cmake -S . -B build
 cmake --build build -j
 ```
 
-4. Run:
+4. Start the server in one terminal:
+
+```sh
+./build/src/tinykv_server
+```
+
+5. Start the REPL client in another terminal:
 
 ```sh
 ./build/src/tinykv_cli
+```
+
+The server must be running before starting the REPL client.
+
+To use a different port, set `TINYKV_PORT` for both processes:
+
+```sh
+TINYKV_PORT=6380 ./build/src/tinykv_server
+TINYKV_PORT=6380 ./build/src/tinykv_cli
 ```
 
 ## Example Usage
@@ -54,8 +69,11 @@ cmake --build build -j
 cmake -S . -B build
 cmake --build build -j
 
-# Run the REPL
-./build/tinykv
+# Terminal 1: start the server
+./build/src/tinykv_server
+
+# Terminal 2: run the REPL client
+./build/src/tinykv_cli
 
 # PUT a key value pair
 PUT <key> <val>

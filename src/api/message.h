@@ -26,6 +26,7 @@ namespace protocol
     struct Response
     {
         bool ok = false;
+        std::string message;
         std::optional<std::string> data;
     };
 } // namespace protocol
