@@ -17,10 +17,11 @@ target_include_directories(tinykv_core PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}
 )
 
-# disable for benchmarks, enable when u want
-target_compile_definitions(tinykv_core
-  PUBLIC TINYKV_ENABLE_LOGGING=1
-)
+if (TINYKV_ENABLE_LOGGING)
+  target_compile_definitions(tinykv_core PUBLIC TINYKV_ENABLE_LOGGING=1)
+else()
+  target_compile_definitions(tinykv_core PUBLIC TINYKV_ENABLE_LOGGING=0)
+endif()
 
 # CLI executable
 add_executable(tinykv_cli

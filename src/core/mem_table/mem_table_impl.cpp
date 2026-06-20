@@ -169,6 +169,7 @@ std::optional<Error> MemTableImpl::replayWal()
     // read each entry to memtable
     for (const auto &entry : entries.value())
     {
+        // if memtable gets full, flush to disk
         if (m_skiplist.getLength() == m_size)
         {
             flushToDisk();
@@ -177,7 +178,7 @@ std::optional<Error> MemTableImpl::replayWal()
         m_skiplist.set(entry);
     }
 
-    // flush to disk if memtable is now not empty
+    // flush to disk if memtable is not empty
     if (m_skiplist.getLength() > 0)
     {
         if (const auto &err = flushToDisk())

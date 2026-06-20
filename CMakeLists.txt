@@ -29,10 +29,12 @@ FetchContent_MakeAvailable(googletest)
 # ------------------------
 enable_testing()
 
+option(TINYKV_ENABLE_LOGGING "Enable TinyKV internal logging" ON)
+option(TINYKV_BUILD_BENCHMARKS "Build TinyKV benchmarks" OFF)
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
-option(TINYKV_BUILD_BENCHMARKS "Build TinyKV benchmarks" OFF)
 if (TINYKV_BUILD_BENCHMARKS)
   # Google Benchmark (for benchmarks)
   FetchContent_Declare(

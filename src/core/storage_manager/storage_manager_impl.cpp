@@ -46,8 +46,8 @@ std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> 
 
 std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
 {
-    // std::cout << "[StorageManagerImpl.get()]" << "\n";
-
+    // TODO: fix bug where entries from disk need to be initialized and read into memory.
+    // or we can move to block-based SSTables first, then we can get rid of the initialization idea.
     // search all levels
     for (const auto &levelManager : m_levelManagers)
     {
