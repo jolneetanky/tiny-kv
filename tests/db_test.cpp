@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 #include "core/db.h"
+#include "core/sstable_manager/sstable.h"
 #include "factories/db_factory.h"
 
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 namespace
 {
@@ -30,6 +32,22 @@ namespace
     };
 
 } // namespace
+
+TEST(SSTableTest, WithinRangeUsesInclusiveStartAndEndKeys)
+{
+    std::vector<Entry> entries{
+        Entry{"b", "2"},
+        Entry{"d", "4"},
+        Entry{"f", "6"},
+    };
+    SSTable table(SSTableMetadata{0, 0, "b", "f"}, std::move(entries));
+
+    EXPECT_FALSE(table.withinRange("a"));
+    EXPECT_TRUE(table.withinRange("b"));
+    EXPECT_TRUE(table.withinRange("d"));
+    EXPECT_TRUE(table.withinRange("f"));
+    EXPECT_FALSE(table.withinRange("g"));
+}
 
 // TEST 1: general put and get (in-memory, not yet flushed)
 TEST_F(DbStorageTest, PutAndGet)

@@ -52,11 +52,16 @@ std::optional<Entry> SSTable::get(std::string key) const
     return std::nullopt;
 };
 
-// TODO: implement this
-bool SSTable::contains(std::string key) const
+// // TODO: implement this
+// bool SSTable::contains(std::string key) const
+// {
+//     return true;
+// };
+
+bool SSTable::withinRange(const std::string &key) const
 {
-    return true;
-};
+    return m_entries[0].key <= key && key <= m_entries[m_entries.size() - 1].key;
+}
 
 std::string SSTable::getStartKey() const
 {

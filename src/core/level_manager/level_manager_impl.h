@@ -1,15 +1,20 @@
 #ifndef LEVEL_MANAGER_IMPL
 #define LEVEL_MANAGER_IMPL
 
-#include <vector>
 #include "types/error.h"
 #include "types/entry.h"
 #include "types/status.h"
 #include "core/level_manager/level_manager.h"
 #include "core/sstable_manager/sstable.h"
+#include "core/bloom_filter/bloom_filter_impl.h"
 
 // contexts
 #include "../../contexts/system_context.h"
+
+// std lib
+#include <vector>
+#include <algorithm>
+#include <memory>
 
 /*
 INVARIANTS (implementation detail that only affects LevelManager but not its API usage. Could be changed depending on how we implement LevelManager.):
@@ -39,6 +44,30 @@ public:
     Status initNew() override;
 
 private:
+    // TableHandle struct containing everything needed to represent and operate on an SSTable
+    // TODO: refactor to block-based design.
+    // Instead of storing in-memory SSTables, it will just load
+    // 1. metadata block
+    // 2. index block
+    // 3. bloom filter blocks
+    struct TableHandle
+    {
+        static constexpr size_t kBloomBitsPerEntry = 10; // `static` so this is shared by all TableHandles
+        static constexpr size_t kBloomHashCount = 7;
+
+        std::unique_ptr<SSTable> table;
+        BloomFilterImpl bloom;
+
+        // just pass in the table, and weconstruct the bloom filter
+        TableHandle(std::unique_ptr<SSTable> table_) : table(std::move(table_)), bloom(std::max<std::size_t>(1, table->getSize() * kBloomBitsPerEntry), kBloomHashCount)
+        {
+            for (const Entry &entry : table->getEntries())
+            {
+                bloom.insert(entry.key);
+            }
+        }
+    };
+
     std::string m_logPrefix;
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
@@ -46,7 +75,8 @@ private:
     SystemContext &m_systemContext;
     bool m_allowOverlap;
 
-    std::vector<std::unique_ptr<SSTable>> m_ssTables;
+    // std::vector<std::unique_ptr<SSTable>> m_ssTables;
+    std::vector<TableHandle> m_tableHandles; // rn, it's fine to just store `TableHandle` because we don't need to support polymorphism of TableHandle yet.
 
     // Helper function to generate an SSTable file name.
     std::string _generateSSTableFileName() const;
