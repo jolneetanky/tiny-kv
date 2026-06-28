@@ -62,7 +62,8 @@ private:
 public:
     SSTable(SSTableMetadata meta, std::vector<Entry> &&entries);
     SSTableMetadata meta() const; // returns a copy of SSTableMetadata so this class itself remains unchanged.
-    bool contains(std::string key) const;
+    // bool contains(std::string key) const;
+    bool withinRange(const std::string &key) const;
     std::optional<Entry> get(std::string key) const;
     std::string getStartKey() const;
     std::string getEndKey() const;

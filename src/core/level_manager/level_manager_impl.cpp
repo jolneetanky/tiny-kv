@@ -43,27 +43,34 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 {
     TINYKV_LOG("[LevelManagerImpl.getKey()] LEVEL " + std::to_string(m_levelNum) + ", KEY: " + key);
 
-    for (const auto &ssTable : m_ssTables)
+    for (const auto &tableHandle : m_tableHandles)
     {
-        TINYKV_LOG("[LevelManagerImpl.getKey()] " << *ssTable);
-        auto it = ssTable->NewIterator();
-        it->Seek(key);
-
-        // if key is not in this table, continue to next table
-        if (!it->Valid())
+        TINYKV_LOG("[LevelManagerImpl.getKey()] " << *(tableHandle.table));
+        if (!tableHandle.table->withinRange(key))
         {
             continue;
         }
 
-        if (it->isTombstone()) // stop at the first tombstone
+        // next, check bloom filter
+        if (!tableHandle.bloom.contains(key))
+        {
+            continue;
+        }
+
+        std::optional<Entry> entry = tableHandle.table->get(key);
+        if (!entry)
+        {
+            continue;
+        }
+
+        if (entry->tombstone) // stop at the first tombstone
         {
             TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND TOMBSTONED KEY " + key);
             break;
         }
 
-        // if valid and not tombstoned, return it
         TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND KEY " + key);
-        return Entry{it->Key(), it->Value(), it->isTombstone()};
+        return entry;
     }
 
     TINYKV_LOG("[LevelManagerImpl.getKey()] key \"" + key + "\" does not exist on disk");
@@ -84,7 +91,7 @@ Status LevelManagerImpl::createTable(std::vector<Entry> &&entries)
     SSTableMetadata metadata = writer.write(full_path, entries, timestamp, file_num);
     std::unique_ptr<SSTable> table = std::make_unique<SSTable>(metadata, std::move(entries));
 
-    m_ssTables.insert(m_ssTables.begin(), std::move(table)); // calls move ctor `unique_ptr(unique_ptr&&)`, same as if we did push_back. No diff here.
+    m_tableHandles.insert(m_tableHandles.begin(), TableHandle(std::move(table)));
 
     return Status::OK();
 };
@@ -101,7 +108,7 @@ Status LevelManagerImpl::initNew()
         // read the files
         SSTableReader reader;
         std::unique_ptr<SSTable> table = std::make_unique<SSTable>(reader.read(dirEntry.path().string()));
-        m_ssTables.emplace_back(std::move(table)); // emplace the rvalue, which calls the move ctor of SSTable.
+        m_tableHandles.emplace_back(std::move(table));
     }
 
     return Status::OK();
@@ -112,7 +119,7 @@ Status LevelManagerImpl::initNew()
 // But by right, only level 0 contains overlapping files.
 Status LevelManagerImpl::compactInto(LevelManager &other)
 {
-    if (m_ssTables.size() == 0)
+    if (m_tableHandles.size() == 0)
         return Status::OK();
 
     // now it's not overlapping
@@ -137,9 +144,9 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     // 4. sort `mergedEntries`, then write to level `other`.
 
     std::vector<const SSTable *> thisTables; // stores pointer to this level's tables, sorted based on start keys
-    thisTables.reserve(this->m_ssTables.size());
-    for (auto &ssTable : this->m_ssTables)
-        thisTables.push_back(ssTable.get());
+    thisTables.reserve(this->m_tableHandles.size());
+    for (auto &tableHandle : this->m_tableHandles)
+        thisTables.push_back(tableHandle.table.get());
 
     // sort tables based on start key
     std::sort(thisTables.begin(), thisTables.end(), [](const SSTable *t1, const SSTable *t2)
@@ -148,9 +155,9 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     // If the `other` level has no files, then this is empty
     std::vector<const SSTable *>
         otherTables;
-    otherTables.reserve(otherImpl.m_ssTables.size());
-    for (auto &ssTable : otherImpl.m_ssTables)
-        otherTables.push_back(ssTable.get());
+    otherTables.reserve(otherImpl.m_tableHandles.size());
+    for (auto &tableHandle : otherImpl.m_tableHandles)
+        otherTables.push_back(tableHandle.table.get());
 
     std::sort(otherTables.begin(), otherTables.end(), [](const SSTable *t1, const SSTable *t2)
               { return t1->getStartKey() < t2->getStartKey(); });
@@ -169,7 +176,7 @@ Status LevelManagerImpl::compactInto(LevelManager &other)
     // `thisTableIdx` points to the index of the current table of the new interval.
     // `otherTableIdx` points to the index of the first other table that is not part of the previous interval, OR to the end index of the other tables.
     //
-    while (thisTableIdx < this->m_ssTables.size())
+    while (thisTableIdx < this->m_tableHandles.size())
     {
         std::vector<const SSTable *> thisLvlTables;
         std::vector<const SSTable *> otherLvlTables;
@@ -279,7 +286,7 @@ Status LevelManagerImpl::_mergeOverlappingTables()
 {
     TINYKV_LOG("LevelManagerImpl::_mergeOverlappingTables()");
 
-    if (m_ssTables.size() == 0)
+    if (m_tableHandles.size() == 0)
         return Status::OK();
     // ASSUME: tables are alr in sorted order (by file number)
     // group tables with overlapping key ranges tgt
@@ -287,10 +294,10 @@ Status LevelManagerImpl::_mergeOverlappingTables()
 
     // sort by startKey
     std::vector<const SSTable *> tables; // stores pointer to this level's tables, sorted based on start keys
-    tables.reserve(this->m_ssTables.size());
+    tables.reserve(this->m_tableHandles.size());
 
-    for (auto &ssTable : this->m_ssTables)
-        tables.push_back(ssTable.get());
+    for (auto &tableHandle : this->m_tableHandles)
+        tables.push_back(tableHandle.table.get());
 
     std::sort(tables.begin(), tables.end(), [](const SSTable *t1, const SSTable *t2)
               { return t1->getStartKey() < t2->getStartKey(); });
@@ -387,12 +394,12 @@ Status LevelManagerImpl::_deleteTables(std::vector<const SSTable *> &tables)
     // unordered set of pointers for fast lookup
     std::unordered_set<const SSTable *> victims(tables.begin(), tables.end());
 
-    auto it = m_ssTables.begin();
-    while (it != m_ssTables.end())
+    auto it = m_tableHandles.begin();
+    while (it != m_tableHandles.end())
     {
-        if (victims.count(it->get()))
+        if (victims.count(it->table.get()))
         {
-            m_ssTables.erase(it); // no need to increment `it` as `it` now points to the next element.
+            it = m_tableHandles.erase(it);
         }
         else
         {

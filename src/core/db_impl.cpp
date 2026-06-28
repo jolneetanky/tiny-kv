@@ -2,6 +2,7 @@
 #include <iostream>
 #include <optional>
 #include "../types/entry.h"
+#include "../common/log.h"
 
 DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
                std::unique_ptr<SkipListImpl> skip,
@@ -14,6 +15,7 @@ DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
 
 protocol::Response DbImpl::put(std::string key, std::string val)
 {
+    TINYKV_LOG("[DbImpl.put()]");
     std::optional<Error> errOpt{(*m_memTable).put(key, val)};
 
     if (errOpt)
@@ -26,6 +28,7 @@ protocol::Response DbImpl::put(std::string key, std::string val)
 
 protocol::Response DbImpl::get(std::string key) const
 {
+    TINYKV_LOG("[DbImpl.get()]");
     std::optional<Entry> optEntry{(*m_memTable).get(key)};
 
     if (optEntry && optEntry->tombstone)
@@ -48,6 +51,7 @@ protocol::Response DbImpl::get(std::string key) const
 
 protocol::Response DbImpl::del(std::string key)
 {
+    TINYKV_LOG("[DbImpl.del()]");
     std::optional<Error> errOpt{m_memTable->del(key)};
 
     if (errOpt)
@@ -60,12 +64,14 @@ protocol::Response DbImpl::del(std::string key)
 
 protocol::Response DbImpl::forceCompactForTests()
 {
+    TINYKV_LOG("[DbImpl.forceCompactForTests()]");
     m_storageManager->compact();
     return protocol::Response{true, "OK", std::nullopt};
 }
 
 protocol::Response DbImpl::forceFlushForTests()
 {
+    TINYKV_LOG("[DbImpl.forceFlushForTests()]");
     m_memTable->flushToDisk();
     return protocol::Response{true, "OK", std::nullopt};
 }

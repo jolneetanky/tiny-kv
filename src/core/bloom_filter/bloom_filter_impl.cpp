@@ -1,6 +1,7 @@
 #include "core/bloom_filter/bloom_filter_impl.h"
 #include <functional> // for std::hash
 #include <iostream>
+#include "common/log.h"
 
 BloomFilterImpl::BloomFilterImpl(size_t size, size_t num_hashes) : m_bit_array(size, false), m_num_hashes{num_hashes} {};
 
@@ -19,10 +20,10 @@ bool BloomFilterImpl::contains(const std::string &item) const
         size_t hash_val = std::hash<std::string>{}(item + std::to_string(i));
         if (!m_bit_array[hash_val % m_bit_array.size()])
         {
-            std::cout << "[BloomFilter.contains()] NOPE" << "\n";
+            TINYKV_LOG("[BloomFilter.contains()] key \"" + item + "\" not in here");
             return false;
         }
     }
-    std::cout << "[BloomFilter.contains()] MAYBE IN HERE" << "\n";
+    TINYKV_LOG("[BloomFilter.contains()] key \"" + item + "\" maybe in here");
     return true;
 };
