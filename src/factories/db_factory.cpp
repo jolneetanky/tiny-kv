@@ -5,11 +5,13 @@
 #include "core/wal/wal.h"
 #include "core/mem_table/mem_table_impl.h"
 #include "core/db_impl.h"
+#include "core/sstable_manager/in_memory_table_format.h"
 
 std::unique_ptr<DbImpl> DbFactory::createDbWithConfig(const DbFactoryConfig &config)
 {
     auto systemCtx = std::make_unique<SystemContext>();
-    auto storageManagerImpl = std::make_unique<StorageManagerImpl>(*systemCtx, config.sstableDirectory, config.maxLevels);
+    auto tableFormat = std::make_unique<InMemoryTableFormat>();
+    auto storageManagerImpl = std::make_unique<StorageManagerImpl>(*systemCtx, config.sstableDirectory, config.maxLevels, std::move(tableFormat));
     auto skipListImpl = std::make_unique<SkipListImpl>();
     auto wal = std::make_unique<WAL>(config.walId, config.walDirectory);
     auto memTableImpl = std::make_unique<MemTableImpl>(config.memtableCapacity, *skipListImpl, *storageManagerImpl, *wal, *systemCtx);

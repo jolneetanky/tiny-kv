@@ -1,4 +1,6 @@
 #include "core/mem_table/mem_table_impl.h"
+#include "core/iterators/iterator.h"
+#include <memory>
 #include <optional>
 #include "common/log.h"
 
@@ -117,27 +119,22 @@ std::optional<Error> MemTableImpl::flushToDisk()
     TINYKV_LOG("[MemTableImpl.flushToDisk()]");
     m_readOnly = true;
 
-    std::optional<std::vector<Entry>> optEntries{m_skiplist.getAll()};
+    // lifetime of the iterator isbound to this function MemTableImpl::flushToDisk()
+    std::unique_ptr<tinykv::Iterator> entries = m_skiplist.NewIterator();
 
-    if (!optEntries)
-    {
-        TINYKV_LOG("[MemTableImpl.flushToDisk()] Failed to get all entries from memtable");
-        return Error{"[MemTableImpl.flushToDisk()] Failed to get all entries from memtable"};
-    }
+    // std::optional<std::vector<Entry>> optEntries{m_skiplist.getAll()};
+    // if (!optEntries)
+    // {
+    //     TINYKV_LOG("[MemTableImpl.flushToDisk()] Failed to get all entries from memtable");
+    //     return Error{"[MemTableImpl.flushToDisk()] Failed to get all entries from memtable"};
+    // }
 
-    std::vector<const Entry *> entryPtrs; // the pointers point to entries in the stack omg...
+    // std::vector<const Entry *> entryPtrs; // the pointers point to entries in the stack omg...
 
-    // obtain every guy in skiplist IN ORDER.
-    // gather this in a vector or smt and pass that vector into your SSTable builder
-    for (const Entry &entry : optEntries.value())
-    {
-        entryPtrs.push_back(&entry);
-
-        TINYKV_LOG(entry);
-    }
-
-    // write to file
-    std::optional<Error> errOpt{m_storageManager.write(entryPtrs, 0)}; // writes a new file to level 0.
+    // // obtain every guy in skiplist IN ORDER.
+    // // gather this in a vector or smt and pass that vector into your SSTable builder
+    // for (const Entry &entry : optEntries.value())
+    std::optional<Error> errOpt{m_storageManager.write(*entries, 0)}; // writes a new file to level 0.
 
     if (errOpt)
     {

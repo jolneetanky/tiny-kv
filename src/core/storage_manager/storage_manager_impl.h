@@ -8,6 +8,7 @@
 #include "types/sstable_file.h"
 #include "core/storage_manager/storage_manager.h"
 #include "core/level_manager/level_manager.h"
+#include "core/sstable_manager/table_format.h"
 
 // contexts
 #include "contexts/system_context.h"
@@ -16,9 +17,9 @@
 class StorageManagerImpl : public StorageManager
 {
 public:
-    StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel);
+    StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel, std::unique_ptr<const TableFormat> tableFormat);
 
-    std::optional<Error> write(const std::vector<const Entry *> &entries, int level) override;
+    std::optional<Error> write(tinykv::Iterator &entries, int level) override;
 
     std::optional<Entry> get(const std::string &key) const override;
 
@@ -36,6 +37,8 @@ private:
 
     // System context
     SystemContext &m_systemContext;
+
+    std::unique_ptr<const TableFormat> m_tableFormat;
 
     std::vector<std::unique_ptr<LevelManager>> m_levelManagers;
 

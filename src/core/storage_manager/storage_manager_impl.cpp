@@ -12,11 +12,11 @@
 #include "types/status.h"
 #include "common/log.h"
 
-StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel)
-    : m_basePath{std::move(basePath)}, m_systemContext{systemContext}, m_maxLevel{std::move(maxLevel)} {};
+StorageManagerImpl::StorageManagerImpl(SystemContext &systemContext, std::string basePath, int maxLevel, std::unique_ptr<const TableFormat> tableFormat)
+    : m_basePath{std::move(basePath)}, m_systemContext{systemContext}, m_tableFormat{std::move(tableFormat)}, m_maxLevel{std::move(maxLevel)} {};
 
 // 1. Hands entries to Level 0 Manager to write the entries into an SSTable.
-std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> &entryPtrs, int level)
+std::optional<Error> StorageManagerImpl::write(tinykv::Iterator &entries, int level)
 {
     // initialise levels if there are no level managers read into memory yet.
     if (m_levelManagers.size() == 0)
@@ -27,14 +27,14 @@ std::optional<Error> StorageManagerImpl::write(const std::vector<const Entry *> 
     // Write to level 0
     auto &level0Manager{m_levelManagers[0]};
 
-    std::vector<Entry> entries;
-    entries.reserve(entryPtrs.size());
-    for (auto &ptr : entryPtrs)
-    {
-        entries.emplace_back(*ptr);
-    }
+    // std::vector<Entry> entries;
+    // entries.reserve(entryPtrs.size());
+    // for (auto &ptr : entryPtrs)
+    // {
+    //     entries.emplace_back(*ptr);
+    // }
 
-    Status status{level0Manager->createTable(std::move(entries))};
+    Status status{level0Manager->createTable(entries)};
     if (!status.ok())
     {
         // std::cerr << "[StorageManagerImpl.write()] Failed to write SSTable" << std::endl;
@@ -135,7 +135,8 @@ std::optional<Error> StorageManagerImpl::initLevels()
         auto level = std::make_unique<LevelManagerImpl>(
             levelNum,
             levelPath,
-            m_systemContext);
+            m_systemContext,
+            *m_tableFormat);
 
         Status status;
         // 2 CASES:
