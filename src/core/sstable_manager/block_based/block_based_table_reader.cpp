@@ -8,16 +8,20 @@
 
 namespace
 {
+    // reads a 64-bit (8-byte) guy from disk into memory as std::uint64_t
     std::uint64_t readUint64BigEndian(std::istream &input)
     {
-        std::array<unsigned char, sizeof(std::uint64_t)> bytes{};
-        input.read(reinterpret_cast<char *>(bytes.data()), bytes.size());
+        std::array<unsigned char, sizeof(std::uint64_t)> bytes{};         // create an array of size 8 bytes
+        input.read(reinterpret_cast<char *>(bytes.data()), bytes.size()); // read exactly 8 bytes from `input` into the `bytes` array
         if (!input)
         {
             throw std::runtime_error("failed to read uint64");
         }
 
         std::uint64_t value = 0;
+        // for each byte (8 bits),
+        // shift the current value left by 8 bits,
+        // then add the new byte into the low 8 bits
         for (unsigned char byte : bytes)
         {
             value = (value << 8) | byte;
@@ -34,6 +38,8 @@ namespace
         };
     }
 
+    // on disk, the footer is really just
+    // metadata.offset, metadata.size, index.offset, index.size, filter.offset, filter.size
     Footer readFooter(std::istream &input, const std::string &fullPath)
     {
         input.seekg(0, std::ios::end);

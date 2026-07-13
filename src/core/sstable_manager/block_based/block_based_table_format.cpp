@@ -15,34 +15,35 @@
 
 namespace
 {
-void writeUint64BigEndian(std::ostream &output, std::uint64_t value)
-{
-    std::array<unsigned char, sizeof(std::uint64_t)> bytes{};
-    for (auto it = bytes.rbegin(); it != bytes.rend(); ++it)
+    void writeUint64BigEndian(std::ostream &output, std::uint64_t value)
     {
-        *it = static_cast<unsigned char>(value & 0xff);
-        value >>= 8;
+        std::array<unsigned char, sizeof(std::uint64_t)> bytes{}; // create an array of size 8 bytes (64 bits)
+        for (auto it = bytes.rbegin(); it != bytes.rend(); ++it)
+        {
+            *it = static_cast<unsigned char>(value & 0xff); // read the lowest 8 bits (1 byte) into the `bytes` array
+            value >>= 8;
+        }
+
+        // now `bytes` looks like eg. [00, 00, 00, 00, 00, 00, 01, 2c]
+        output.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+        if (!output)
+        {
+            throw std::runtime_error("failed to write uint64");
+        }
     }
 
-    output.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
-    if (!output)
+    void writeBlockHandle(std::ostream &output, const BlockHandle &handle)
     {
-        throw std::runtime_error("failed to write uint64");
+        writeUint64BigEndian(output, handle.offset);
+        writeUint64BigEndian(output, handle.size);
     }
-}
 
-void writeBlockHandle(std::ostream &output, const BlockHandle &handle)
-{
-    writeUint64BigEndian(output, handle.offset);
-    writeUint64BigEndian(output, handle.size);
-}
-
-void writeFooter(std::ostream &output, const Footer &footer)
-{
-    writeBlockHandle(output, footer.metadata_block);
-    writeBlockHandle(output, footer.index_block);
-    writeBlockHandle(output, footer.filter_block);
-}
+    void writeFooter(std::ostream &output, const Footer &footer)
+    {
+        writeBlockHandle(output, footer.metadata_block);
+        writeBlockHandle(output, footer.index_block);
+        writeBlockHandle(output, footer.filter_block);
+    }
 }
 
 std::shared_ptr<const TableReader> BlockBasedTableFormat::openTable(const std::string &fullPath) const
