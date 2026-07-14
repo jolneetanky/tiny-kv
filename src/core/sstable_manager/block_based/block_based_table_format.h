@@ -8,6 +8,8 @@ class BlockBasedTableFormat final : public TableFormat
 public:
     std::shared_ptr<const TableReader> openTable(const std::string &fullPath) const override;
 
+    // assumptions
+    // 1. `entries` is alr sorted
     std::shared_ptr<const TableReader> writeTable(
         const std::string &fullPath,
         tinykv::Iterator &entries,

@@ -21,6 +21,7 @@ public:
 private:
     std::string m_fullPath;
     Footer m_footer;
+    SSTableMetadata m_meta;
 };
 
 #endif

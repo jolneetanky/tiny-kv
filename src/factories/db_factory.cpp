@@ -7,6 +7,7 @@
 #include "core/db_impl.h"
 #include "core/sstable_manager/in_memory_table_format.h"
 #include "core/sstable_manager/table_format.h"
+#include "core/sstable_manager/block_based/block_based_table_format.h"
 
 #include <stdexcept>
 
@@ -20,7 +21,7 @@ namespace
         case TableFormatKind::InMemory:
             return std::make_unique<InMemoryTableFormat>();
         case TableFormatKind::BlockBased:
-            throw std::runtime_error("BlockBased table format is not implemented yet");
+            return std::make_unique<BlockBasedTableFormat>();
         }
     }
 }

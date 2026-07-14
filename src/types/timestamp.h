@@ -1,6 +1,6 @@
 #ifndef TIMESTAMP_H
 #define TIMESTAMP_H
 
-using TimestampType = long long;
+using TimestampType = uint64_t;
 
 #endif
