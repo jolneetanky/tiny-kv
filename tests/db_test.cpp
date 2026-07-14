@@ -1,14 +1,69 @@
 #include <gtest/gtest.h>
 #include "core/db.h"
+#include "core/sstable_manager/block_based/block_based_table_format.h"
 #include "core/sstable_manager/sstable.h"
 #include "factories/db_factory.h"
 
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 namespace
 {
+    class VectorIterator final : public tinykv::Iterator
+    {
+    public:
+        explicit VectorIterator(std::vector<Entry> entries) : m_entries{std::move(entries)}, m_index{0} {}
+
+        bool Valid() const override
+        {
+            return m_index < m_entries.size();
+        }
+
+        void SeekToFirst() override
+        {
+            m_index = 0;
+        }
+
+        void SeekToLast() override
+        {
+            m_index = m_entries.empty() ? 0 : m_entries.size() - 1;
+        }
+
+        void Seek(const std::string &key) override
+        {
+            m_index = 0;
+            while (m_index < m_entries.size() && m_entries[m_index].key < key)
+            {
+                ++m_index;
+            }
+        }
+
+        void Next() override
+        {
+            ++m_index;
+        }
+
+        const std::string &Key() const override
+        {
+            return m_entries[m_index].key;
+        }
+
+        const std::string &Value() const override
+        {
+            return m_entries[m_index].val;
+        }
+
+        bool isTombstone() const override
+        {
+            return m_entries[m_index].tombstone;
+        }
+
+    private:
+        std::vector<Entry> m_entries;
+        std::size_t m_index;
+    };
 
     void cleanupStorage()
     {
@@ -32,6 +87,36 @@ namespace
     };
 
 } // namespace
+
+TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
+{
+    cleanupStorage();
+
+    BlockBasedTableFormat format;
+    VectorIterator entries{
+        std::vector<Entry>{
+            Entry{"apple", "1"},
+            Entry{"banana", "2"},
+            Entry{"zebra", "3"},
+        },
+    };
+
+    std::shared_ptr<const TableReader> reader = format.writeTable("./sstables/level-0/table-metadata-test", entries, 1234, 99);
+    SSTableMetadata meta = reader->meta();
+
+    EXPECT_EQ(meta.m_file_number, 99);
+    EXPECT_EQ(meta.m_timestamp, 1234);
+    EXPECT_EQ(meta.m_min_key, "apple");
+    EXPECT_EQ(meta.m_max_key, "zebra");
+
+    EXPECT_FALSE(reader->withinRange("aardvark"));
+    EXPECT_TRUE(reader->withinRange("apple"));
+    EXPECT_TRUE(reader->withinRange("banana"));
+    EXPECT_TRUE(reader->withinRange("zebra"));
+    EXPECT_FALSE(reader->withinRange("zzzz"));
+
+    cleanupStorage();
+}
 
 // bloom filter test
 // TEST(SSTableTest, WithinRangeUsesInclusiveStartAndEndKeys)
