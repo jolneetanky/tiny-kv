@@ -5,7 +5,9 @@
 #include "core/sstable_manager/table_reader.h"
 #include "core/sstable_manager/block_based/block_based_sstable_structs.h"
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 class BlockBasedTableReader final : public TableReader
 {
@@ -22,6 +24,8 @@ private:
     std::string m_fullPath;
     Footer m_footer;
     SSTableMetadata m_meta;
+    std::vector<IndexEntry> m_index;
+    FilterBlock m_filter;
 };
 
 #endif

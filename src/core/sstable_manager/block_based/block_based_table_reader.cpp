@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -148,6 +149,100 @@ namespace
             std::move(maxKey),
         };
     }
+
+    std::vector<IndexEntry> readIndexBlock(std::istream &input, const BlockHandle &handle, const std::string &fullPath)
+    {
+        if (handle.offset == 0 && handle.size == 0)
+        {
+            throw std::runtime_error("BlockBasedTableReader: missing index block: " + fullPath);
+        }
+
+        input.seekg(static_cast<std::streamoff>(handle.offset), std::ios::beg);
+        if (!input)
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to seek index block: " + fullPath);
+        }
+
+        const std::streampos start = input.tellg();
+        if (start == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine index block start: " + fullPath);
+        }
+
+        const std::uint32_t numEntries = readUint32BigEndian(input);
+        std::vector<IndexEntry> index;
+        index.reserve(numEntries);
+
+        for (std::uint32_t i = 0; i < numEntries; ++i)
+        {
+            index.push_back(IndexEntry{
+                .last_key = readString(input),
+                .block = readBlockHandle(input),
+            });
+        }
+
+        const std::streampos end = input.tellg();
+        if (end == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine index block end: " + fullPath);
+        }
+
+        const auto bytesRead = static_cast<std::uint64_t>(end - start);
+        if (bytesRead != handle.size)
+        {
+            throw std::runtime_error("BlockBasedTableReader: index block size mismatch: " + fullPath);
+        }
+
+        return index;
+    }
+
+    FilterBlock readFilterBlock(std::istream &input,
+                                const BlockHandle &handle,
+                                const std::string &fullPath)
+    {
+        if (handle.offset == 0 && handle.size == 0)
+        {
+            throw std::runtime_error("BlockBasedTableReader: missing filter block: " + fullPath);
+        }
+
+        input.seekg(static_cast<std::streamoff>(handle.offset), std::ios::beg);
+        if (!input)
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to seek filter block: " + fullPath);
+        }
+
+        const std::streampos start = input.tellg();
+        if (start == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine filter block start: " + fullPath);
+        }
+
+        FilterBlock filter;
+        filter.num_bits = readUint32BigEndian(input);
+        filter.num_hashes = readUint32BigEndian(input);
+        const std::uint32_t bitsetSize = readUint32BigEndian(input);
+
+        filter.bitset.resize(bitsetSize);
+        input.read(reinterpret_cast<char *>(filter.bitset.data()), static_cast<std::streamsize>(filter.bitset.size()));
+        if (!input)
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to read filter bitset: " + fullPath);
+        }
+
+        const std::streampos end = input.tellg();
+        if (end == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine filter block end: " + fullPath);
+        }
+
+        const auto bytesRead = static_cast<std::uint64_t>(end - start);
+        if (bytesRead != handle.size)
+        {
+            throw std::runtime_error("BlockBasedTableReader: filter block size mismatch: " + fullPath);
+        }
+
+        return filter;
+    }
 }
 
 BlockBasedTableReader::BlockBasedTableReader(const std::string &fullPath)
@@ -162,12 +257,14 @@ BlockBasedTableReader::BlockBasedTableReader(const std::string &fullPath)
     // 1. read footer (offset + size of index, metadata, and filter blocks)
     m_footer = readFooter(input, m_fullPath);
 
-    // 2. read metadata block (SSTableMetadata)
+    // 2. read filter block
+    m_filter = readFilterBlock(input, m_footer.filter_block, m_fullPath);
+
+    // 3. read index block
+    m_index = readIndexBlock(input, m_footer.index_block, m_fullPath);
+
+    // 4. read metadata block (SSTableMetadata)
     m_meta = readMetadataBlock(input, m_footer.metadata_block, m_fullPath);
-
-    // 2. read index block
-
-    // 3. read filter block
 }
 
 SSTableMetadata BlockBasedTableReader::meta() const
