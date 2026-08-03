@@ -7,6 +7,12 @@
 #include <string>
 
 // This metadata should stay the same regardless of the SSTable implementation.
+// file_number: uint64 big-endian
+// timestamp:   int64 big-endian
+// min_key_len: uint32 big-endian
+// min_key:     raw bytes
+// max_key_len: uint32 big-endian
+// max_key:     raw bytes
 struct SSTableMetadata
 {
     FileNumber m_file_number;

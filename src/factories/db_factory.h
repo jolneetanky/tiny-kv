@@ -6,6 +6,13 @@
 #include "core/db.h"
 #include "core/db_impl.h"
 
+enum class TableFormatKind
+{
+    InMemory,
+    BlockBased,
+};
+
+// TODO: make this a json config
 struct DbFactoryConfig
 {
     int memtableCapacity = 3;
@@ -13,14 +20,25 @@ struct DbFactoryConfig
     std::string walDirectory = "./wal";
     std::string sstableDirectory = "./sstables";
     int maxLevels = 3;
+    TableFormatKind tableFormat = TableFormatKind::InMemory;
 };
 
+// make the methods static so we don't need to create an instance of `DbFactory`
 class DbFactory
 {
 public:
-    static std::unique_ptr<DB> createDefaultDb();
-    static std::unique_ptr<DbImpl> createDbForTests();
+    // general factory function
     static std::unique_ptr<DbImpl> createDbWithConfig(const DbFactoryConfig &config);
+
+    // factory functions to create in-memory based DB
+    // exposes a DB, ie. the main interface
+    static std::unique_ptr<DB> createDefaultDb();
+    // exposes a DbImpl, which comes with additional functions for testing (eg. DbImpl::compact(), etc.)
+    static std::unique_ptr<DbImpl> createDbForTests();
+
+    // factory functions to create block-based DB
+    static std::unique_ptr<DB> createBlockBasedDb();
+    static std::unique_ptr<DbImpl> createBlockBasedDbForTests();
 };
 
 #endif

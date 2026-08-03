@@ -27,7 +27,7 @@ public:
 
     virtual std::optional<Entry> getKey(const std::string &key) const = 0;
 
-    virtual Status createTable(std::vector<Entry> &&entries) = 0;
+    virtual Status createTable(tinykv::Iterator &entries) = 0;
 
     // This function compacts all SSTables in this level into `other`.
     // Entries in this level with the same key will override the same entries in `other`, hence compacting by reducing the number of files.
@@ -35,6 +35,9 @@ public:
 
     // Initializes the level with SSTables for each file in this level.
     // ASSUMPTION: the related directory has already been created.
+    // Each SSTable file should be opened once by its owning LevelManager.
+    // That LevelManager owns the shared_ptr for that table.
+    // Other code shares that pointer only through the LevelManager.
     virtual Status initNew() = 0;
 
     virtual ~LevelManager() = default;
