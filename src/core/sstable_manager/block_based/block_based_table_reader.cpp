@@ -243,6 +243,65 @@ namespace
 
         return filter;
     }
+
+    // fullPath = full path to the file that stores this data block
+    std::optional<Entry> readEntryFromDataBlock(
+        std::istream &input,
+        const BlockHandle &handle,
+        const std::string &key,
+        const std::string &fullPath)
+    {
+        input.seekg(static_cast<std::streamoff>(handle.offset), std::ios::beg);
+        if (!input)
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to seek data block: " + fullPath);
+        }
+
+        const std::streampos start = input.tellg();
+        if (start == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine data block start: " + fullPath);
+        }
+
+        const std::uint32_t numEntries = readUint32BigEndian(input);
+
+        for (std::uint32_t i = 0; i < numEntries; ++i)
+        {
+            std::string entryKey = readString(input);
+            std::string entryVal = readString(input);
+
+            char tombstoneByte = 0;
+            input.read(&tombstoneByte, 1);
+            if (!input)
+            {
+                throw std::runtime_error("BlockBasedTableReader: failed to read tombstone byte: " + fullPath);
+            }
+
+            if (entryKey == key)
+            {
+                return Entry{std::move(entryKey), std::move(entryVal), tombstoneByte != 0};
+            }
+
+            // Entries in a data block are sorted, so we can stop early.
+            if (entryKey > key)
+            {
+                break;
+            }
+        }
+
+        const std::streampos end = input.tellg();
+        if (end == std::streampos{-1})
+        {
+            throw std::runtime_error("BlockBasedTableReader: failed to determine data block end: " + fullPath);
+        }
+
+        if (static_cast<std::uint64_t>(end - start) > handle.size)
+        {
+            throw std::runtime_error("BlockBasedTableReader: read past data block: " + fullPath);
+        }
+
+        return std::nullopt;
+    }
 }
 
 BlockBasedTableReader::BlockBasedTableReader(const std::string &fullPath)
@@ -277,17 +336,50 @@ bool BlockBasedTableReader::withinRange(const std::string &key) const
     return key >= m_meta.m_min_key && key <= m_meta.m_max_key;
 }
 
+// TODO: IMPLf
 std::optional<Entry> BlockBasedTableReader::get(const std::string &key) const
 {
-    (void)key;
-    return std::nullopt;
+    // find the corresponding index block
+    // 1. find the first index entry whose `lastKey >= key`
+    // this is the data block the contains `key`
+    // 2. read that data block from disk
+    // 3. decode entries in that block and search for `key`
+    if (!withinRange(key))
+    {
+        return std::nullopt;
+    }
+
+    // find the first index entry wose `lastKey >= key`
+    const auto it = std::lower_bound(
+        m_index.begin(),
+        m_index.end(),
+        key,
+        [](const IndexEntry &entry, const std::string &target)
+        {
+            return entry.last_key < target;
+        });
+
+    if (it == m_index.end())
+    {
+        return std::nullopt;
+    }
+
+    std::ifstream input{m_fullPath, std::ios::binary};
+    if (!input)
+    {
+        throw std::runtime_error("BlockBasedTableReader: failed to open table: " + m_fullPath);
+    }
+
+    return readEntryFromDataBlock(input, it->block, key, m_fullPath);
 }
 
+// TODO
 std::unique_ptr<tinykv::Iterator> BlockBasedTableReader::NewIterator() const
 {
     throw std::runtime_error("BlockBasedTableReader::NewIterator(): data blocks are not implemented yet");
 }
 
+// TODO
 std::size_t BlockBasedTableReader::getSize() const
 {
     return 0;

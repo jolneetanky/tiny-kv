@@ -309,7 +309,6 @@ std::shared_ptr<const TableReader> BlockBasedTableFormat::writeTable(
 {
     (void)entries;
 
-    // TODO: write data, index, metadata, and filter blocks before the footer.
     // For now this only writes an empty footer so the reader can validate the
     // fixed-width footer encoding without depending on C++ struct layout.
     const std::filesystem::path tablePath{fullPath};
