@@ -265,6 +265,7 @@ namespace
 
         const std::uint32_t numEntries = readUint32BigEndian(input);
 
+        // 
         for (std::uint32_t i = 0; i < numEntries; ++i)
         {
             std::string entryKey = readString(input);

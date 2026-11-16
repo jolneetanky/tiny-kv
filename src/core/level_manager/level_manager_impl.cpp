@@ -70,7 +70,6 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 
 // time = O(n), because we insert in front
 // but the cost is not significant, as we assume number of SSTables in a level at any one time remains small (thanks to compaction).
-// TODO: change to an iterator of Entry
 Status LevelManagerImpl::createTable(tinykv::Iterator &entries)
 {
     TINYKV_LOG("[LevelManagerImpl.createTable()]");
