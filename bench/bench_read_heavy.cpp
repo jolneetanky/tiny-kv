@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -55,6 +56,15 @@ namespace
         config.walDirectory = paths.wal.string();
         config.sstableDirectory = paths.sstables.string();
         config.walId = 0;
+        const char *tableFormat = std::getenv("TINYKV_TABLE_FORMAT");
+        if (tableFormat != nullptr && std::string(tableFormat) == "in-memory")
+        {
+            config.tableFormat = TableFormatKind::InMemory;
+        }
+        else
+        {
+            config.tableFormat = TableFormatKind::BlockBased;
+        }
         return config;
     }
 

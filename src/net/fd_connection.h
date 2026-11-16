@@ -5,13 +5,13 @@
 #include <string>
 
 // Handles:
-// 1. Reading a line from a TCP byte stream, up to "\n"
-// 2. Send all bytes of a given string over a TCP connection.
+// 1. Reading a line from the fd
+// 2. Writing to the fd
 class FdConnection : public Connection
 {
 public:
-    explicit FdConnection(int fd); // prevent an `int` from being implicitly converted to a `FdConnection`
-    std::optional<std::string> readLine() override; // returns nullopt on EOF/error
+    explicit FdConnection(int fd);                   // prevent an `int` from being implicitly converted to a `FdConnection`
+    std::optional<std::string> readLine() override;  // returns nullopt on EOF/error
     bool writeAll(const std::string &data) override; // returns false on error
     void close() override;
 
