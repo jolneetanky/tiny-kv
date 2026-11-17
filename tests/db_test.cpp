@@ -76,6 +76,17 @@ namespace
         std::filesystem::remove_all("./sstables", ec);
     }
 
+    std::size_t countRegularFiles(const std::filesystem::path &directory)
+    {
+        std::size_t count = 0;
+        for (const auto &entry : std::filesystem::directory_iterator{directory})
+        {
+            if (entry.is_regular_file())
+                ++count;
+        }
+        return count;
+    }
+
     class DbStorageTest : public ::testing::Test
     {
     protected:
@@ -170,10 +181,63 @@ TEST_F(DbStorageTest, LevelZeroAgeOrderAndFileNumbersSurviveRestart)
     EXPECT_EQ(newestValue->val, "newest");
 }
 
-TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
+TEST_F(DbStorageTest, BlockBasedTableReaderIteratesAcrossDataBlocks)
 {
-    cleanupStorage();
+    BlockBasedTableFormat format;
+    std::vector<Entry> tableEntries;
+    for (int i = 0; i < 12; ++i)
+    {
+        const std::string key = std::string{"key-"} + (i < 10 ? "0" : "") + std::to_string(i);
+        tableEntries.emplace_back(key, std::string(1000, static_cast<char>('a' + i)), i == 7);
+    }
 
+    VectorIterator entries{std::move(tableEntries)};
+    const auto reader = format.writeTable(
+        "./sstables/level-0/table-iterator-test", entries, 1234, 99);
+    std::unique_ptr<tinykv::Iterator> iterator = reader->NewSortedIterator();
+
+    ASSERT_TRUE(iterator->Valid());
+    EXPECT_EQ(iterator->Key(), "key-00");
+    for (int i = 0; i < 12; ++i)
+    {
+        const std::string expectedKey = std::string{"key-"} + (i < 10 ? "0" : "") + std::to_string(i);
+        ASSERT_TRUE(iterator->Valid());
+        EXPECT_EQ(iterator->Key(), expectedKey);
+        EXPECT_EQ(iterator->isTombstone(), i == 7);
+        if (i != 7)
+            EXPECT_EQ(iterator->Value(), std::string(1000, static_cast<char>('a' + i)));
+
+        if (i == 9)
+        {
+            iterator->Next();
+            ASSERT_TRUE(iterator->Valid());
+            EXPECT_EQ(iterator->Key(), "key-10");
+        }
+        else
+        {
+            iterator->Next();
+        }
+    }
+    EXPECT_FALSE(iterator->Valid());
+
+    iterator->Seek("key-10");
+    ASSERT_TRUE(iterator->Valid());
+    EXPECT_EQ(iterator->Key(), "key-10");
+    iterator->Next();
+    ASSERT_TRUE(iterator->Valid());
+    EXPECT_EQ(iterator->Key(), "key-11");
+    iterator->Next();
+    EXPECT_FALSE(iterator->Valid());
+
+    iterator->Seek("key-12");
+    EXPECT_FALSE(iterator->Valid());
+    iterator->SeekToLast();
+    ASSERT_TRUE(iterator->Valid());
+    EXPECT_EQ(iterator->Key(), "key-11");
+}
+
+TEST_F(DbStorageTest, BlockBasedTableReaderReadsMetadataBlock)
+{
     BlockBasedTableFormat format;
     VectorIterator entries{
         std::vector<Entry>{
@@ -197,7 +261,6 @@ TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
     EXPECT_TRUE(reader->withinRange("zebra"));
     EXPECT_FALSE(reader->withinRange("zzzz"));
 
-    cleanupStorage();
 }
 
 // bloom filter test
@@ -382,6 +445,46 @@ TEST_F(DbStorageTest, CompactionRespectsDeletes)
     auto result = db->get("ghost");
     EXPECT_FALSE(result.ok);
     EXPECT_FALSE(result.data.has_value());
+}
+
+TEST_F(DbStorageTest, CompactionMergesL0IntoNonEmptyL1)
+{
+    DbFactoryConfig config;
+    config.tableFormat = TableFormatKind::BlockBased;
+    config.maxLevels = 1; // Keep the first compaction output in L1.
+    std::unique_ptr<DbImpl> db = DbFactory::createDbWithConfig(config);
+
+    ASSERT_TRUE(db->put("a", "old-a").ok);
+    ASSERT_TRUE(db->put("c", "old-c").ok);
+    ASSERT_TRUE(db->forceFlushForTests().ok);
+    ASSERT_TRUE(db->forceCompactForTests().ok);
+
+    ASSERT_EQ(countRegularFiles("./sstables/level-0"), 0);
+    ASSERT_EQ(countRegularFiles("./sstables/level-1"), 1);
+
+    // This L0 table overlaps the existing L1 table at key "c".
+    ASSERT_TRUE(db->put("c", "new-c").ok);
+    ASSERT_TRUE(db->put("e", "new-e").ok);
+    ASSERT_TRUE(db->forceFlushForTests().ok);
+    ASSERT_EQ(countRegularFiles("./sstables/level-0"), 1);
+    ASSERT_EQ(countRegularFiles("./sstables/level-1"), 1);
+
+    ASSERT_TRUE(db->forceCompactForTests().ok);
+
+    EXPECT_EQ(countRegularFiles("./sstables/level-0"), 0);
+    EXPECT_EQ(countRegularFiles("./sstables/level-1"), 1);
+
+    auto oldOnlyKey = db->get("a");
+    ASSERT_TRUE(oldOnlyKey.ok);
+    EXPECT_EQ(oldOnlyKey.data, "old-a");
+
+    auto overwrittenKey = db->get("c");
+    ASSERT_TRUE(overwrittenKey.ok);
+    EXPECT_EQ(overwrittenKey.data, "new-c");
+
+    auto newOnlyKey = db->get("e");
+    ASSERT_TRUE(newOnlyKey.ok);
+    EXPECT_EQ(newOnlyKey.data, "new-e");
 }
 
 // TODO: Write test for SSTableReader.write()
