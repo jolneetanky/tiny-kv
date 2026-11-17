@@ -46,8 +46,9 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
 {
     TINYKV_LOG("[LevelManagerImpl.getKey()] LEVEL " + std::to_string(m_levelNum) + ", KEY: " + key);
 
-    for (const auto &tableReader : m_tableReaders)
+    for (auto tableIt = m_tableReaders.rbegin(); tableIt != m_tableReaders.rend(); ++tableIt)
     {
+        const auto &tableReader = *tableIt;
         if (!tableReader->withinRange(key))
         {
             continue;
@@ -85,7 +86,7 @@ Status LevelManagerImpl::createTable(tinykv::Iterator &entries)
 
     std::shared_ptr<const TableReader> tableReader = m_tableFormat.writeTable(fullPath, entries, timestamp, file_num);
 
-    m_tableReaders.insert(m_tableReaders.begin(), std::move(tableReader));
+    m_tableReaders.emplace_back(std::move(tableReader));
 
     return Status::OK();
 };
@@ -108,16 +109,16 @@ Status LevelManagerImpl::initNew()
     }
 
     // Directory iteration order is unspecified. File numbers are allocated
-    // monotonically and persisted in each table, so sort newest-first on reopen.
+    // monotonically and persisted in each table, so restore oldest-first order.
     std::sort(m_tableReaders.begin(), m_tableReaders.end(), [](const auto &left, const auto &right)
               {
                   const SSTableMetadata leftMeta = left->meta();
                   const SSTableMetadata rightMeta = right->meta();
                   if (leftMeta.m_file_number != rightMeta.m_file_number)
-                      return leftMeta.m_file_number > rightMeta.m_file_number;
+                      return leftMeta.m_file_number < rightMeta.m_file_number;
                   if (leftMeta.m_timestamp != rightMeta.m_timestamp)
-                      return leftMeta.m_timestamp > rightMeta.m_timestamp;
-                  return left->getFilePath() > right->getFilePath();
+                      return leftMeta.m_timestamp < rightMeta.m_timestamp;
+                  return left->getFilePath() < right->getFilePath();
               });
 
     return Status::OK();

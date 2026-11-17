@@ -19,8 +19,8 @@
 
 /*
 INVARIANTS (implementation detail that only affects LevelManager but not its API usage. Could be changed depending on how we implement LevelManager.):
-1. m_ssTables always maintains chronological order (newest entry inserted in front), so we know which entry should override which.
-We maintain chronological order when inserting a new SSTable (which doesn't happen often, only during flush / writes. But we assume GETs happen much more frequent than WRITEs so we optimize for more GETs instead.)
+1. m_tableReaders always maintains chronological order (oldest first, newest last), so reverse iteration checks newer tables first.
+We append new SSTables in O(1) and search from newest to oldest for lookups.
 2. Only if `level == 0`, then we allow overlaps.
 3. A LevelManager contains overlapping tables if `m_allowOverlap` == true. Overlaps are enforced during insertion depending on this rule.
 4. After `compactInto()`, `this` becomes an empty level, and `other` is NOT overlapping.
