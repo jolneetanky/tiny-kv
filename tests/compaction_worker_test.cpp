@@ -51,6 +51,8 @@ namespace
         std::optional<Error> compact() override
         {
             {
+                // mock: compact() clears the state so that next
+                // the next `isCompactionNeeded()` returns false
                 std::lock_guard<std::mutex> lock(m_state->mutex);
                 ++m_state->compactionCount;
                 if (m_state->clearConditionOnCompact)
@@ -104,6 +106,8 @@ namespace
     };
 }
 
+// TESTS:
+// 1. the worker wakes up for compaction
 TEST_F(CompactionWorkerTest, WakesForCompactionAndCanBeScheduledAgainAfterConditionClears)
 {
     auto state = std::make_shared<CompactionState>();
@@ -112,6 +116,7 @@ TEST_F(CompactionWorkerTest, WakesForCompactionAndCanBeScheduledAgainAfterCondit
     ASSERT_TRUE(db->put("first", "value").ok);
     ASSERT_TRUE(waitForCompactionCount(state, 1));
 
+    // set compaction `needed` to `true` to trigger the compaction worker
     {
         std::lock_guard<std::mutex> lock(state->mutex);
         state->needed = true;

@@ -53,6 +53,8 @@ private:
     const TableFormat &m_tableFormat;
     bool m_allowOverlap;
 
+    // Kept newest-first by durable file number. Readers expose their source paths
+    // so compaction can remove input files after writing replacements.
     std::vector<std::shared_ptr<const TableReader>> m_tableReaders;
 
     // Helper function to generate an SSTable file name.

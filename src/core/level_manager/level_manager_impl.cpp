@@ -79,11 +79,11 @@ Status LevelManagerImpl::createTable(tinykv::Iterator &entries)
 {
     TINYKV_LOG("[LevelManagerImpl.createTable()]");
 
-    std::string full_path = m_directoryPath + "/" + _generateSSTableFileName();
+    std::string fullPath = m_directoryPath + "/" + _generateSSTableFileName();
     TimestampType timestamp = _getTimeNow();
     FileNumber file_num = m_systemContext.file_number_allocator.next();
 
-    std::shared_ptr<const TableReader> tableReader = m_tableFormat.writeTable(full_path, entries, timestamp, file_num);
+    std::shared_ptr<const TableReader> tableReader = m_tableFormat.writeTable(fullPath, entries, timestamp, file_num);
 
     m_tableReaders.insert(m_tableReaders.begin(), std::move(tableReader));
 
@@ -103,8 +103,22 @@ Status LevelManagerImpl::initNew()
         }
 
         std::shared_ptr<const TableReader> tableReader = m_tableFormat.openTable(dirEntry.path().string());
+        m_systemContext.file_number_allocator.restore(tableReader->meta().m_file_number);
         m_tableReaders.emplace_back(std::move(tableReader));
     }
+
+    // Directory iteration order is unspecified. File numbers are allocated
+    // monotonically and persisted in each table, so sort newest-first on reopen.
+    std::sort(m_tableReaders.begin(), m_tableReaders.end(), [](const auto &left, const auto &right)
+              {
+                  const SSTableMetadata leftMeta = left->meta();
+                  const SSTableMetadata rightMeta = right->meta();
+                  if (leftMeta.m_file_number != rightMeta.m_file_number)
+                      return leftMeta.m_file_number > rightMeta.m_file_number;
+                  if (leftMeta.m_timestamp != rightMeta.m_timestamp)
+                      return leftMeta.m_timestamp > rightMeta.m_timestamp;
+                  return left->getFilePath() > right->getFilePath();
+              });
 
     return Status::OK();
 };

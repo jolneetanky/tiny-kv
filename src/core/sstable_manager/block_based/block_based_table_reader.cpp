@@ -332,6 +332,11 @@ SSTableMetadata BlockBasedTableReader::meta() const
     return m_meta;
 }
 
+std::string BlockBasedTableReader::getFilePath() const
+{
+    return m_fullPath;
+}
+
 bool BlockBasedTableReader::withinRange(const std::string &key) const
 {
     return key >= m_meta.m_min_key && key <= m_meta.m_max_key;

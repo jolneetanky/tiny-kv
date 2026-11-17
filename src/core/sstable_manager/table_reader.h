@@ -18,6 +18,9 @@ public:
     // TODO: Return this table's metadata without loading all entries.
     virtual SSTableMetadata meta() const = 0;
 
+    // Return the path of the file represented by this reader.
+    virtual std::string getFilePath() const = 0;
+
     // TODO: Return true if key is within this table's inclusive key range.
     virtual bool withinRange(const std::string &key) const = 0;
 

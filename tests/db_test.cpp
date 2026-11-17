@@ -2,6 +2,7 @@
 #include "core/db.h"
 #include "core/sstable_manager/block_based/block_based_table_format.h"
 #include "core/sstable_manager/in_memory_table_format.h"
+#include "core/sstable_manager/sstable_reader.h"
 #include "core/sstable_manager/sstable.h"
 #include "core/storage_manager/storage_manager_impl.h"
 #include "factories/db_factory.h"
@@ -9,6 +10,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace
@@ -108,6 +110,64 @@ TEST_F(DbStorageTest, CompactionConditionStartsAtFourLevelZeroTables)
 
         EXPECT_EQ(storageManager.isCompactionNeeded(), table == 3);
     }
+}
+
+TEST_F(DbStorageTest, LevelZeroAgeOrderAndFileNumbersSurviveRestart)
+{
+    auto writeValue = [](StorageManagerImpl &storageManager, const std::string &value)
+    {
+        VectorIterator entries{std::vector<Entry>{Entry{"key", value}}};
+        return storageManager.write(entries, 0);
+    };
+
+    SystemContext firstContext;
+    StorageManagerImpl firstStorageManager(
+        firstContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+
+    ASSERT_FALSE(writeValue(firstStorageManager, "old"));
+    ASSERT_FALSE(writeValue(firstStorageManager, "new"));
+
+    SystemContext reopenedContext;
+    StorageManagerImpl reopenedStorageManager(
+        reopenedContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+    ASSERT_FALSE(reopenedStorageManager.initLevels());
+
+    auto reopenedValue = reopenedStorageManager.get("key");
+    ASSERT_TRUE(reopenedValue.has_value());
+    EXPECT_EQ(reopenedValue->val, "new");
+
+    ASSERT_FALSE(writeValue(reopenedStorageManager, "newest"));
+
+    std::set<FileNumber> fileNumbers;
+    SSTableReader reader;
+    for (const auto &entry : std::filesystem::directory_iterator{"./sstables/level-0"})
+    {
+        if (entry.is_regular_file())
+        {
+            SSTable table = reader.read(entry.path().string());
+            fileNumbers.insert(table.meta().m_file_number);
+        }
+    }
+
+    EXPECT_EQ(fileNumbers, (std::set<FileNumber>{0, 1, 2}));
+
+    SystemContext secondReopenContext;
+    StorageManagerImpl secondReopenStorageManager(
+        secondReopenContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+    ASSERT_FALSE(secondReopenStorageManager.initLevels());
+
+    auto newestValue = secondReopenStorageManager.get("key");
+    ASSERT_TRUE(newestValue.has_value());
+    EXPECT_EQ(newestValue->val, "newest");
 }
 
 TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
