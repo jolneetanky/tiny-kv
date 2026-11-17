@@ -357,6 +357,8 @@ Status LevelManagerImpl::compactInto(LevelManager &destination, const tinykv::Co
     // merge keys from `sourceTables` to `destinationTables`
     std::unique_ptr<tinykv::Iterator> mergedEntries =
         _mergeCompactionInputs(sourceTables, destinationTables);
+    if (!mergedEntries)
+        return Status::Error("Failed to create iterators for compaction inputs");
 
     // Persist the replacement before deleting any source files.
     Status status = destination.createTable(*mergedEntries);

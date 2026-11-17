@@ -1,5 +1,6 @@
 #include "core/sstable_manager/block_based/block_based_table_reader.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -303,6 +304,169 @@ namespace
 
         return std::nullopt;
     }
+
+    class BlockBasedTableIterator final : public tinykv::Iterator
+    {
+    public:
+        BlockBasedTableIterator(const std::string &fullPath, std::vector<IndexEntry> index)
+            : m_index{std::move(index)}, m_input{fullPath, std::ios::binary}
+        {
+            if (!m_input)
+                throw std::runtime_error("BlockBasedTableReader: failed to open table: " + fullPath);
+            SeekToFirst();
+        }
+
+        bool Valid() const override
+        {
+            return m_entryIndex < m_currentBlock.size();
+        }
+
+        void SeekToFirst() override
+        {
+            for (std::size_t blockIndex = 0; blockIndex < m_index.size(); ++blockIndex)
+            {
+                _loadBlock(blockIndex);
+                if (!m_currentBlock.empty())
+                {
+                    m_entryIndex = 0;
+                    return;
+                }
+            }
+            _invalidate();
+        }
+
+        void SeekToLast() override
+        {
+            for (std::size_t blockIndex = m_index.size(); blockIndex > 0; --blockIndex)
+            {
+                _loadBlock(blockIndex - 1);
+                if (!m_currentBlock.empty())
+                {
+                    m_entryIndex = m_currentBlock.size() - 1;
+                    return;
+                }
+            }
+            _invalidate();
+        }
+
+        void Seek(const std::string &target) override
+        {
+            const auto indexIt = std::lower_bound(
+                m_index.begin(), m_index.end(), target,
+                [](const IndexEntry &entry, const std::string &key)
+                {
+                    return entry.last_key < key;
+                });
+            if (indexIt == m_index.end())
+            {
+                _invalidate();
+                return;
+            }
+
+            std::size_t blockIndex = static_cast<std::size_t>(indexIt - m_index.begin());
+            for (; blockIndex < m_index.size(); ++blockIndex)
+            {
+                _loadBlock(blockIndex);
+                const auto entryIt = std::lower_bound(
+                    m_currentBlock.begin(), m_currentBlock.end(), target,
+                    [](const Entry &entry, const std::string &key)
+                    {
+                        return entry.key < key;
+                    });
+                if (entryIt != m_currentBlock.end())
+                {
+                    m_entryIndex = static_cast<std::size_t>(entryIt - m_currentBlock.begin());
+                    return;
+                }
+            }
+            _invalidate();
+        }
+
+        void Next() override
+        {
+            if (!Valid())
+                return;
+
+            ++m_entryIndex;
+            if (Valid())
+                return;
+
+            for (std::size_t blockIndex = m_blockIndex + 1; blockIndex < m_index.size(); ++blockIndex)
+            {
+                _loadBlock(blockIndex);
+                if (!m_currentBlock.empty())
+                {
+                    m_entryIndex = 0;
+                    return;
+                }
+            }
+            _invalidate();
+        }
+
+        const std::string &Key() const override
+        {
+            return m_currentBlock[m_entryIndex].key;
+        }
+
+        const std::string &Value() const override
+        {
+            return m_currentBlock[m_entryIndex].val;
+        }
+
+        bool isTombstone() const override
+        {
+            return m_currentBlock[m_entryIndex].tombstone;
+        }
+
+    private:
+        void _loadBlock(std::size_t blockIndex)
+        {
+            m_currentBlock.clear();
+            m_blockIndex = blockIndex;
+
+            const BlockHandle &handle = m_index[blockIndex].block;
+            m_input.clear();
+            m_input.seekg(static_cast<std::streamoff>(handle.offset), std::ios::beg);
+            if (!m_input)
+                throw std::runtime_error("BlockBasedTableReader: failed to seek data block");
+
+            const std::streampos start = m_input.tellg();
+            if (start == std::streampos{-1})
+                throw std::runtime_error("BlockBasedTableReader: failed to determine data block start");
+
+            const std::uint32_t numEntries = readUint32BigEndian(m_input);
+            m_currentBlock.reserve(numEntries);
+            for (std::uint32_t i = 0; i < numEntries; ++i)
+            {
+                std::string key = readString(m_input);
+                std::string value = readString(m_input);
+                char tombstoneByte = 0;
+                m_input.read(&tombstoneByte, 1);
+                if (!m_input)
+                    throw std::runtime_error("BlockBasedTableReader: failed to read tombstone byte");
+
+                m_currentBlock.push_back(Entry{std::move(key), std::move(value), tombstoneByte != 0});
+            }
+
+            const std::streampos end = m_input.tellg();
+            if (end == std::streampos{-1} || static_cast<std::uint64_t>(end - start) != handle.size)
+                throw std::runtime_error("BlockBasedTableReader: data block size mismatch");
+            m_entryIndex = m_currentBlock.size();
+        }
+
+        void _invalidate()
+        {
+            m_currentBlock.clear();
+            m_entryIndex = 0;
+            m_blockIndex = m_index.size();
+        }
+
+        std::vector<IndexEntry> m_index;
+        std::ifstream m_input;
+        std::vector<Entry> m_currentBlock;
+        std::size_t m_blockIndex = 0;
+        std::size_t m_entryIndex = 0;
+    };
 }
 
 BlockBasedTableReader::BlockBasedTableReader(const std::string &fullPath)
@@ -379,10 +543,9 @@ std::optional<Entry> BlockBasedTableReader::get(const std::string &key) const
     return readEntryFromDataBlock(input, it->block, key, m_fullPath);
 }
 
-// TODO
 std::unique_ptr<tinykv::Iterator> BlockBasedTableReader::NewSortedIterator() const
 {
-    throw std::runtime_error("BlockBasedTableReader::NewSortedIterator(): data blocks are not implemented yet");
+    return std::make_unique<BlockBasedTableIterator>(m_fullPath, m_index);
 }
 
 // TODO
