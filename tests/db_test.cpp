@@ -289,6 +289,29 @@ TEST_F(DbStorageTest, FlushRespectsDeletes)
     EXPECT_FALSE(result.data.has_value());
 }
 
+TEST_F(DbStorageTest, TombstoneInNewerLevelHidesOlderValue)
+{
+    std::filesystem::create_directories("./sstables/level-0");
+    std::filesystem::create_directories("./sstables/level-1");
+
+    BlockBasedTableFormat tableFormat;
+    VectorIterator olderValue{std::vector<Entry>{Entry{"key", "old"}}};
+    VectorIterator tombstone{std::vector<Entry>{Entry{"key", "", true}}};
+
+    tableFormat.writeTable("./sstables/level-1/table-older", olderValue, 100, 1);
+    tableFormat.writeTable("./sstables/level-0/table-tombstone", tombstone, 200, 2);
+
+    SystemContext systemContext;
+    StorageManagerImpl storageManager(
+        systemContext,
+        "./sstables",
+        3,
+        std::make_unique<BlockBasedTableFormat>());
+    ASSERT_FALSE(storageManager.initLevels());
+
+    EXPECT_FALSE(storageManager.get("key").has_value());
+}
+
 // Tests for compaction should focus on what happens to keys that are ON DISK.
 // That's why everytime I modify a value, I flush it.
 // If I want soemthing to appear with the tombstone value on disk, I write the key -> flush -> delete key -> flush.

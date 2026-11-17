@@ -62,7 +62,7 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
         if (entry->tombstone) // stop at the first tombstone
         {
             TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND TOMBSTONED KEY " + key);
-            break;
+            return entry;
         }
 
         TINYKV_LOG("[LevelManagerImpl.getKey()] FOUND KEY " + key);
