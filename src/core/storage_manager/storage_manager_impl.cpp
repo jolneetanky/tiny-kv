@@ -1,5 +1,6 @@
 #include "core/storage_manager/storage_manager_impl.h"
 #include "core/level_manager/level_manager_impl.h"
+#include "core/level_manager/compaction_planner.h"
 #include <string>
 #include <iostream>
 #include <filesystem>
@@ -69,7 +70,41 @@ std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
 
 std::optional<Error> StorageManagerImpl::compact()
 {
-    // Compaction is intentionally a no-op until the merge implementation is ready.
+    if (m_levelManagers.empty())
+        return std::nullopt;
+
+    TINYKV_LOG("[StorageManagerImpl::compact()] plan and compact adjacent levels");
+
+    // Compact from the upper levels toward the bottom. A completed pass from
+    // level N to N+1 can therefore feed its output into the next pair.
+    for (int sourceLevelNumber = 0; sourceLevelNumber < m_maxLevel; ++sourceLevelNumber)
+    {
+        LevelManager &source = *m_levelManagers[sourceLevelNumber];
+        LevelManager &destination = *m_levelManagers[sourceLevelNumber + 1];
+
+        // collect metadata of tables, get grouprs
+        const std::vector<SSTableMetadata> sourceTables = source.tableMetadata();
+        const std::vector<SSTableMetadata> destinationTables = destination.tableMetadata();
+        const std::vector<tinykv::CompactionPlan> plans =
+            tinykv::CompactionPlanner::planOverlappingGroups(sourceTables, destinationTables);
+
+        TINYKV_LOG("[StorageManagerImpl::compact()] level-" + std::to_string(sourceLevelNumber) +
+                   " -> level-" + std::to_string(sourceLevelNumber + 1) +
+                   ": " + std::to_string(plans.size()) + " overlap group(s)");
+
+        for (const tinykv::CompactionPlan &plan : plans)
+        {
+            Status status = source.compactInto(destination, plan);
+            if (!status.ok())
+            {
+                return Error{
+                    "Failed to compact level-" + std::to_string(sourceLevelNumber) +
+                    " into level-" + std::to_string(sourceLevelNumber + 1) +
+                    ": " + status.to_string()};
+            }
+        }
+    }
+
     return std::nullopt;
 };
 

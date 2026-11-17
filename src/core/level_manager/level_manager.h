@@ -2,6 +2,7 @@
 #define LEVEL_MANAGER
 
 #include "core/sstable_manager/sstable.h"
+#include "core/level_manager/compaction_planner.h"
 #include "types/error.h"
 #include "types/entry.h"
 #include "types/status.h"
@@ -27,13 +28,17 @@ public:
 
     virtual size_t tableCount() const = 0;
 
+    // Returns metadata in the same identity space used by CompactionPlan
+    // (file numbers identify tables; vector order is not significant).
+    virtual std::vector<SSTableMetadata> tableMetadata() const = 0;
+
     virtual std::optional<Entry> getKey(const std::string &key) const = 0;
 
     virtual Status createTable(tinykv::Iterator &entries) = 0;
 
-    // This function compacts all SSTables in this level into `other`.
-    // Entries in this level with the same key will override the same entries in `other`, hence compacting by reducing the number of files.
-    virtual Status compactInto(LevelManager &other) = 0;
+    // Executes one planned overlap group, writing its replacement output into
+    // `destination`. The source level is newer when the same key exists in both.
+    virtual Status compactInto(LevelManager &destination, const tinykv::CompactionPlan &plan) = 0;
 
     // Initializes the level with SSTables for each file in this level.
     // ASSUMPTION: the related directory has already been created.

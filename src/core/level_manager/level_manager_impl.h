@@ -32,11 +32,12 @@ public:
     LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext, const TableFormat &tableFormat); // should be tied to an existing level directory. TODO: throw error if the directory doesn't exist before this is called
     const int &getLevel() override;
     size_t tableCount() const override;
+    std::vector<SSTableMetadata> tableMetadata() const override;
 
     // reimplemented API
     std::optional<Entry> getKey(const std::string &key) const override;
     Status createTable(tinykv::Iterator &entries) override;
-    Status compactInto(LevelManager &other) override;
+    Status compactInto(LevelManager &destination, const tinykv::CompactionPlan &plan) override;
 
     // Reads the files in this directory, and loads them into memory as an SSTable.
     // Who calls this? For now, anyone can call this.
@@ -53,7 +54,7 @@ private:
     const TableFormat &m_tableFormat;
     bool m_allowOverlap;
 
-    // Kept newest-first by durable file number. Readers expose their source paths
+    // Kept oldest-first by durable file number. Readers expose their source paths
     // so compaction can remove input files after writing replacements.
     std::vector<std::shared_ptr<const TableReader>> m_tableReaders;
 

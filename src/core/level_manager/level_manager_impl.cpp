@@ -17,6 +17,15 @@ size_t LevelManagerImpl::tableCount() const
     return m_tableReaders.size();
 }
 
+std::vector<SSTableMetadata> LevelManagerImpl::tableMetadata() const
+{
+    std::vector<SSTableMetadata> metadata;
+    metadata.reserve(m_tableReaders.size());
+    for (const auto &tableReader : m_tableReaders)
+        metadata.emplace_back(tableReader->meta());
+    return metadata;
+}
+
 std::string LevelManagerImpl::_generateSSTableFileName() const
 {
     static std::atomic<uint64_t> counter{0};
@@ -127,10 +136,11 @@ Status LevelManagerImpl::initNew()
 // The level doesn't know if it contains overlapping files or not. It also doesn't know if `other` contains overlapping files.
 // So just in case, it merges overlapping files for both levels.
 // But by right, only level 0 contains overlapping files.
-Status LevelManagerImpl::compactInto(LevelManager &other)
+Status LevelManagerImpl::compactInto(LevelManager &destination, const tinykv::CompactionPlan &plan)
 {
-    // TODO: Rework compaction against TableReader iterators.
-    return Status::OK();
+    (void)destination;
+    (void)plan;
+    return Status::Error("LevelManagerImpl::compactInto() is not implemented yet");
 };
 
 #if 0
