@@ -50,7 +50,7 @@ void DbImpl::compactionWorkerLoop()
             return;
 
         m_storageManager->compact();
-        m_compactionRequested = false;
+        m_compactionRequested = false; // only mark this completion request as done AFTER compact() is complete
     }
 }
 
