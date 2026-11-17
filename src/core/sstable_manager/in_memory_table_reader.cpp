@@ -21,7 +21,7 @@ std::optional<Entry> InMemoryTableReader::get(const std::string &key) const
     return m_table->get(key);
 }
 
-std::unique_ptr<tinykv::Iterator> InMemoryTableReader::NewIterator() const
+std::unique_ptr<tinykv::Iterator> InMemoryTableReader::NewSortedIterator() const
 {
     return m_table->NewIterator();
 }

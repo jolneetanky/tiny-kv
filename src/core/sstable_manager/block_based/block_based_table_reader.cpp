@@ -380,9 +380,9 @@ std::optional<Entry> BlockBasedTableReader::get(const std::string &key) const
 }
 
 // TODO
-std::unique_ptr<tinykv::Iterator> BlockBasedTableReader::NewIterator() const
+std::unique_ptr<tinykv::Iterator> BlockBasedTableReader::NewSortedIterator() const
 {
-    throw std::runtime_error("BlockBasedTableReader::NewIterator(): data blocks are not implemented yet");
+    throw std::runtime_error("BlockBasedTableReader::NewSortedIterator(): data blocks are not implemented yet");
 }
 
 // TODO

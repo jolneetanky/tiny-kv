@@ -23,7 +23,8 @@ INVARIANTS (implementation detail that only affects LevelManager but not its API
 We append new SSTables in O(1) and search from newest to oldest for lookups.
 2. Only if `level == 0`, then we allow overlaps.
 3. A LevelManager contains overlapping tables if `m_allowOverlap` == true. Overlaps are enforced during insertion depending on this rule.
-4. After `compactInto()`, `this` becomes an empty level, and `other` is NOT overlapping.
+4. A successful `compactInto()` replaces the selected source and destination
+   tables with output that does not overlap the remaining destination tables.
 */
 class LevelManagerImpl : public LevelManager
 {
@@ -33,11 +34,14 @@ public:
     const int &getLevel() override;
     size_t tableCount() const override;
     std::vector<SSTableMetadata> tableMetadata() const override;
+    std::vector<std::shared_ptr<const TableReader>> tableReadersByFileNumber(
+        const std::vector<FileNumber> &fileNumbers) const override;
 
     // reimplemented API
     std::optional<Entry> getKey(const std::string &key) const override;
     Status createTable(tinykv::Iterator &entries) override;
     Status compactInto(LevelManager &destination, const tinykv::CompactionPlan &plan) override;
+    Status deleteTablesByFileNumber(const std::vector<FileNumber> &fileNumbers) override;
 
     // Reads the files in this directory, and loads them into memory as an SSTable.
     // Who calls this? For now, anyone can call this.
@@ -47,6 +51,18 @@ public:
     Status initNew() override;
 
 private:
+    class CompactionMergingIterator;
+
+    // IMVARIANTS (very impt, merging algo depends on these invariants):
+    // 1. the `iterator` outputs entries in SORTED, ASCENDING ORDER of keys!!
+    // 2. within each input iterator stream, THERE ARE NO DUPLICATE KEYS.
+    struct MergeInput
+    {
+        std::unique_ptr<tinykv::Iterator> iterator; // iterator for the corresponding SSTable
+        bool isSourceLevel;
+        FileNumber fileNumber;
+    };
+
     std::string m_logPrefix;
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
@@ -62,6 +78,9 @@ private:
     std::string _generateSSTableFileName() const;
     // Helper function to get current time
     TimestampType _getTimeNow();
+    std::unique_ptr<tinykv::Iterator> _mergeCompactionInputs(
+        const std::vector<std::shared_ptr<const TableReader>> &sourceTables,
+        const std::vector<std::shared_ptr<const TableReader>> &destinationTables) const;
     // TODO: Rework compaction against TableReader iterators.
     // Status _mergeOverlappingTables();
     // Status _deleteTables(std::vector<const SSTable *> &tables);

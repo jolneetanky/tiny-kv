@@ -15,7 +15,7 @@ public:
     std::string getFilePath() const override { return {}; }
     bool withinRange(const std::string &key) const override;
     std::optional<Entry> get(const std::string &key) const override;
-    std::unique_ptr<tinykv::Iterator> NewIterator() const override;
+    std::unique_ptr<tinykv::Iterator> NewSortedIterator() const override;
     std::size_t getSize() const override;
 
 private:
