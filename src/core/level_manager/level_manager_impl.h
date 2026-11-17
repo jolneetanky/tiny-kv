@@ -31,6 +31,7 @@ class LevelManagerImpl : public LevelManager
 public:
     LevelManagerImpl(int levelNum, std::string directoryPath, SystemContext &systemContext, const TableFormat &tableFormat); // should be tied to an existing level directory. TODO: throw error if the directory doesn't exist before this is called
     const int &getLevel() override;
+    size_t tableCount() const override;
 
     // reimplemented API
     std::optional<Entry> getKey(const std::string &key) const override;
@@ -48,7 +49,6 @@ private:
     std::string m_logPrefix;
     int m_levelNum;
     std::string m_directoryPath; // eg. "./sstables/level-0"
-    std::mutex m_mutex;
     SystemContext &m_systemContext;
     const TableFormat &m_tableFormat;
     bool m_allowOverlap;

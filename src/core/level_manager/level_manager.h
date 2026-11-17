@@ -25,6 +25,8 @@ class LevelManager
 public:
     virtual const int &getLevel() = 0;
 
+    virtual size_t tableCount() const = 0;
+
     virtual std::optional<Entry> getKey(const std::string &key) const = 0;
 
     virtual Status createTable(tinykv::Iterator &entries) = 0;

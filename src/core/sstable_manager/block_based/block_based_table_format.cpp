@@ -18,6 +18,7 @@ constexpr std::size_t DATA_BLOCK_MAX_SIZE = 4096; // max number of bytes in data
 constexpr std::uint32_t FILTER_NUM_BITS = 8192;
 constexpr std::uint32_t FILTER_NUM_HASHES = 7;
 
+// writes happen via `std::ofstream::write(bytes)`
 namespace
 {
     void writeUint64BigEndian(std::ostream &output, std::uint64_t value)
@@ -307,10 +308,6 @@ std::shared_ptr<const TableReader> BlockBasedTableFormat::writeTable(
     TimestampType timestamp,
     FileNumber fileNum) const
 {
-    (void)entries;
-
-    // For now this only writes an empty footer so the reader can validate the
-    // fixed-width footer encoding without depending on C++ struct layout.
     const std::filesystem::path tablePath{fullPath};
     if (tablePath.has_parent_path())
     {

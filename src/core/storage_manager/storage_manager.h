@@ -14,6 +14,7 @@ class StorageManager
 public:
     virtual std::optional<Error> write(tinykv::Iterator &entries, int level) = 0;
     virtual std::optional<Entry> get(const std::string &key) const = 0;
+    virtual bool isCompactionNeeded() const = 0;
     virtual std::optional<Error> compact() = 0;
     virtual ~StorageManager() = default;
 };

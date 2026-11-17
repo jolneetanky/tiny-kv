@@ -69,17 +69,15 @@ std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
 
 std::optional<Error> StorageManagerImpl::compact()
 {
-    if (m_levelManagers.size() == 0)
-        return std::nullopt;
-
-    // merge level `i` with level `i+1`, for all 0 <= i <= n-1
-    for (int lvl = 0; lvl < m_maxLevel; lvl++)
-    {
-        m_levelManagers[lvl]->compactInto(*m_levelManagers[lvl + 1]);
-    }
-
+    // Compaction is intentionally a no-op until the merge implementation is ready.
     return std::nullopt;
 };
+
+bool StorageManagerImpl::isCompactionNeeded() const
+{
+    constexpr size_t kLevelZeroTableLimit = 4;
+    return !m_levelManagers.empty() && m_levelManagers.front()->tableCount() >= kLevelZeroTableLimit;
+}
 
 std::optional<Error> StorageManagerImpl::initLevels()
 {

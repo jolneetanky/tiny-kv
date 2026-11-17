@@ -12,6 +12,11 @@ const int &LevelManagerImpl::getLevel()
     return m_levelNum;
 }
 
+size_t LevelManagerImpl::tableCount() const
+{
+    return m_tableReaders.size();
+}
+
 std::string LevelManagerImpl::_generateSSTableFileName() const
 {
     static std::atomic<uint64_t> counter{0};
