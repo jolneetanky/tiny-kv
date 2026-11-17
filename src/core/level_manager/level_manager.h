@@ -2,10 +2,14 @@
 #define LEVEL_MANAGER
 
 #include "core/sstable_manager/sstable.h"
+#include "core/level_manager/compaction_planner.h"
+#include "core/sstable_manager/table_reader.h"
 #include "types/error.h"
 #include "types/entry.h"
 #include "types/status.h"
+#include <memory>
 #include <span>
+#include <vector>
 
 /*
 RESPONSIBILITIES:
@@ -25,13 +29,29 @@ class LevelManager
 public:
     virtual const int &getLevel() = 0;
 
+    virtual size_t tableCount() const = 0;
+
+    // Returns metadata in the same identity space used by CompactionPlan
+    // (file numbers identify tables; vector order is not significant).
+    virtual std::vector<SSTableMetadata> tableMetadata() const = 0;
+
+    // Returns readers for the requested stable file identifiers. The returned
+    // order matches fileNumbers; a missing identifier is omitted.
+    virtual std::vector<std::shared_ptr<const TableReader>> tableReadersByFileNumber(
+        const std::vector<FileNumber> &fileNumbers) const = 0;
+
     virtual std::optional<Entry> getKey(const std::string &key) const = 0;
 
     virtual Status createTable(tinykv::Iterator &entries) = 0;
 
-    // This function compacts all SSTables in this level into `other`.
-    // Entries in this level with the same key will override the same entries in `other`, hence compacting by reducing the number of files.
-    virtual Status compactInto(LevelManager &other) = 0;
+    // Executes one planned overlap group, writing its replacement output into
+    // `destination`. Each input table must contain at most one entry per key;
+    // duplicate keys across different input tables are allowed. The source
+    // level is newer when the same key exists in both.
+    virtual Status compactInto(LevelManager &destination, const tinykv::CompactionPlan &plan) = 0;
+
+    // Removes the named table files from disk and from this level's catalog.
+    virtual Status deleteTablesByFileNumber(const std::vector<FileNumber> &fileNumbers) = 0;
 
     // Initializes the level with SSTables for each file in this level.
     // ASSUMPTION: the related directory has already been created.

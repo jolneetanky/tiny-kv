@@ -1,12 +1,16 @@
 #include <gtest/gtest.h>
 #include "core/db.h"
 #include "core/sstable_manager/block_based/block_based_table_format.h"
+#include "core/sstable_manager/in_memory_table_format.h"
+#include "core/sstable_manager/sstable_reader.h"
 #include "core/sstable_manager/sstable.h"
+#include "core/storage_manager/storage_manager_impl.h"
 #include "factories/db_factory.h"
 
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace
@@ -87,6 +91,84 @@ namespace
     };
 
 } // namespace
+
+TEST_F(DbStorageTest, CompactionConditionStartsAtFourLevelZeroTables)
+{
+    SystemContext systemContext;
+    StorageManagerImpl storageManager(
+        systemContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+
+    EXPECT_FALSE(storageManager.isCompactionNeeded());
+
+    for (int table = 0; table < 4; ++table)
+    {
+        VectorIterator entries{std::vector<Entry>{Entry{"key-" + std::to_string(table), "value"}}};
+        ASSERT_FALSE(storageManager.write(entries, 0));
+
+        EXPECT_EQ(storageManager.isCompactionNeeded(), table == 3);
+    }
+}
+
+TEST_F(DbStorageTest, LevelZeroAgeOrderAndFileNumbersSurviveRestart)
+{
+    auto writeValue = [](StorageManagerImpl &storageManager, const std::string &value)
+    {
+        VectorIterator entries{std::vector<Entry>{Entry{"key", value}}};
+        return storageManager.write(entries, 0);
+    };
+
+    SystemContext firstContext;
+    StorageManagerImpl firstStorageManager(
+        firstContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+
+    ASSERT_FALSE(writeValue(firstStorageManager, "old"));
+    ASSERT_FALSE(writeValue(firstStorageManager, "new"));
+
+    SystemContext reopenedContext;
+    StorageManagerImpl reopenedStorageManager(
+        reopenedContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+    ASSERT_FALSE(reopenedStorageManager.initLevels());
+
+    auto reopenedValue = reopenedStorageManager.get("key");
+    ASSERT_TRUE(reopenedValue.has_value());
+    EXPECT_EQ(reopenedValue->val, "new");
+
+    ASSERT_FALSE(writeValue(reopenedStorageManager, "newest"));
+
+    std::set<FileNumber> fileNumbers;
+    SSTableReader reader;
+    for (const auto &entry : std::filesystem::directory_iterator{"./sstables/level-0"})
+    {
+        if (entry.is_regular_file())
+        {
+            SSTable table = reader.read(entry.path().string());
+            fileNumbers.insert(table.meta().m_file_number);
+        }
+    }
+
+    EXPECT_EQ(fileNumbers, (std::set<FileNumber>{0, 1, 2}));
+
+    SystemContext secondReopenContext;
+    StorageManagerImpl secondReopenStorageManager(
+        secondReopenContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+    ASSERT_FALSE(secondReopenStorageManager.initLevels());
+
+    auto newestValue = secondReopenStorageManager.get("key");
+    ASSERT_TRUE(newestValue.has_value());
+    EXPECT_EQ(newestValue->val, "newest");
+}
 
 TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
 {
@@ -205,6 +287,29 @@ TEST_F(DbStorageTest, FlushRespectsDeletes)
     auto result = db->get("ghost");
     EXPECT_FALSE(result.ok);
     EXPECT_FALSE(result.data.has_value());
+}
+
+TEST_F(DbStorageTest, TombstoneInNewerLevelHidesOlderValue)
+{
+    std::filesystem::create_directories("./sstables/level-0");
+    std::filesystem::create_directories("./sstables/level-1");
+
+    BlockBasedTableFormat tableFormat;
+    VectorIterator olderValue{std::vector<Entry>{Entry{"key", "old"}}};
+    VectorIterator tombstone{std::vector<Entry>{Entry{"key", "", true}}};
+
+    tableFormat.writeTable("./sstables/level-1/table-older", olderValue, 100, 1);
+    tableFormat.writeTable("./sstables/level-0/table-tombstone", tombstone, 200, 2);
+
+    SystemContext systemContext;
+    StorageManagerImpl storageManager(
+        systemContext,
+        "./sstables",
+        3,
+        std::make_unique<BlockBasedTableFormat>());
+    ASSERT_FALSE(storageManager.initLevels());
+
+    EXPECT_FALSE(storageManager.get("key").has_value());
 }
 
 // Tests for compaction should focus on what happens to keys that are ON DISK.

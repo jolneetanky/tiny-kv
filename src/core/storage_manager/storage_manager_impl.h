@@ -23,6 +23,8 @@ public:
 
     std::optional<Entry> get(const std::string &key) const override;
 
+    bool isCompactionNeeded() const override;
+
     std::optional<Error> compact() override;
 
     // initializes the level managers based on existing folders on disk.

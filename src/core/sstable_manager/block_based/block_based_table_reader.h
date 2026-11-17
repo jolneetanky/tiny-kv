@@ -15,9 +15,10 @@ public:
     explicit BlockBasedTableReader(const std::string &fullPath);
 
     SSTableMetadata meta() const override;
+    std::string getFilePath() const override;
     bool withinRange(const std::string &key) const override;
     std::optional<Entry> get(const std::string &key) const override;
-    std::unique_ptr<tinykv::Iterator> NewIterator() const override;
+    std::unique_ptr<tinykv::Iterator> NewSortedIterator() const override;
     std::size_t getSize() const override;
 
 private:

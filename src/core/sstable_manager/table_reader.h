@@ -18,14 +18,18 @@ public:
     // TODO: Return this table's metadata without loading all entries.
     virtual SSTableMetadata meta() const = 0;
 
+    // Return the path of the file represented by this reader.
+    virtual std::string getFilePath() const = 0;
+
     // TODO: Return true if key is within this table's inclusive key range.
     virtual bool withinRange(const std::string &key) const = 0;
 
     // TODO: Perform an optimized point lookup for key.
     virtual std::optional<Entry> get(const std::string &key) const = 0;
 
-    // TODO: Return an iterator for scans/compaction.
-    virtual std::unique_ptr<tinykv::Iterator> NewIterator() const = 0;
+    // Return an iterator for scans/compaction. Entries must be yielded in
+    // ascending key order.
+    virtual std::unique_ptr<tinykv::Iterator> NewSortedIterator() const = 0;
 
     // TODO: Return logical entry count if known.
     virtual std::size_t getSize() const = 0;
