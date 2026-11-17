@@ -27,16 +27,12 @@ DbImpl::~DbImpl()
 
 void DbImpl::requestCompactionIfNeeded()
 {
-    if (!m_storageManager->isCompactionNeeded())
-    {
-        m_compactionScheduled = false;
-        return;
-    }
-
-    if (m_compactionScheduled)
+    // if
+    // 1. no compaction needed, OR
+    // 2. compaction needed, but this is a duplicate compaction request to the worker
+    if (!m_storageManager->isCompactionNeeded() || m_compactionRequested)
         return;
 
-    m_compactionScheduled = true;
     m_compactionRequested = true;
     m_compactionCv.notify_one();
 }
@@ -46,13 +42,15 @@ void DbImpl::compactionWorkerLoop()
     std::unique_lock<std::mutex> lock(m_dbMutex);
     while (true)
     {
+        // `condition_variable::wait()` handles spurious wakeups alr
+        // releases the mutex while waiting
         m_compactionCv.wait(lock, [this]
                             { return m_stopCompactionWorker || m_compactionRequested; });
         if (m_stopCompactionWorker)
             return;
 
-        m_compactionRequested = false;
         m_storageManager->compact();
+        m_compactionRequested = false;
     }
 }
 

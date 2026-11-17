@@ -25,7 +25,6 @@ private:
     mutable std::mutex m_dbMutex;
     std::condition_variable m_compactionCv;
     bool m_compactionRequested = false;
-    bool m_compactionScheduled = false;
     bool m_stopCompactionWorker = false;
     std::thread m_compactionWorker;
 
