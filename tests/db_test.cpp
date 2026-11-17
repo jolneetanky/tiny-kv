@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include "core/db.h"
 #include "core/sstable_manager/block_based/block_based_table_format.h"
+#include "core/sstable_manager/in_memory_table_format.h"
 #include "core/sstable_manager/sstable.h"
+#include "core/storage_manager/storage_manager_impl.h"
 #include "factories/db_factory.h"
 
 #include <filesystem>
@@ -87,6 +89,26 @@ namespace
     };
 
 } // namespace
+
+TEST_F(DbStorageTest, CompactionConditionStartsAtFourLevelZeroTables)
+{
+    SystemContext systemContext;
+    StorageManagerImpl storageManager(
+        systemContext,
+        "./sstables",
+        3,
+        std::make_unique<InMemoryTableFormat>());
+
+    EXPECT_FALSE(storageManager.isCompactionNeeded());
+
+    for (int table = 0; table < 4; ++table)
+    {
+        VectorIterator entries{std::vector<Entry>{Entry{"key-" + std::to_string(table), "value"}}};
+        ASSERT_FALSE(storageManager.write(entries, 0));
+
+        EXPECT_EQ(storageManager.isCompactionNeeded(), table == 3);
+    }
+}
 
 TEST(BlockBasedTableReaderTest, ReadsMetadataBlock)
 {

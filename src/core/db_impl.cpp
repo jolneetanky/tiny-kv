@@ -7,7 +7,7 @@
 DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
                std::unique_ptr<SkipListImpl> skip,
                std::unique_ptr<WAL> wal,
-               std::unique_ptr<StorageManagerImpl> sm,
+               std::unique_ptr<StorageManager> sm,
                std::unique_ptr<MemTableImpl> mem)
     : m_systemCtx(std::move(ctx)), m_skipList(std::move(skip)), m_wal(std::move(wal)), m_storageManager(std::move(sm)), m_memTable(std::move(mem))
 {
