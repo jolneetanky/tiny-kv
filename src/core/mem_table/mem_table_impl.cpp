@@ -116,6 +116,11 @@ bool MemTableImpl::isReadOnly() const
 
 std::optional<Error> MemTableImpl::flushToDisk()
 {
+    return _flushMemTableToDisk(true);
+};
+
+std::optional<Error> MemTableImpl::_flushMemTableToDisk(bool removeWalAfterWrite)
+{
     TINYKV_LOG("[MemTableImpl.flushToDisk()]");
     m_readOnly = true;
 
@@ -142,11 +147,21 @@ std::optional<Error> MemTableImpl::flushToDisk()
         return errOpt.value();
     }
 
-    // delete the old WAL file
-    if (const auto &err = m_wal.remove())
+    // BUG: if WAL deletion fails, or the server crashes before this next step
+    // then on startup, when the WAL is flushed, we get duplicate entries,
+    // however because the nature of PUT and DEL are idempotent
+    // the issue would likely go undetected, but this is incorrect behavior and should be fixed.
+
+    // During recovery, keep the WAL until every entry has been replayed and
+    // written. A crash between recovery batches must not lose the remaining
+    // entries that are still only in the in-memory WAL snapshot.
+    if (removeWalAfterWrite)
     {
-        TINYKV_LOG("[MemTableImpl.flushToDisk()] ERROR: Failed to delete WAL - " << err->error);
-        return err.value();
+        if (const auto &err = m_wal.remove())
+        {
+            TINYKV_LOG("[MemTableImpl.flushToDisk()] ERROR: Failed to delete WAL - " << err->error);
+            return err.value();
+        }
     }
 
     // empty skiplist
@@ -157,10 +172,14 @@ std::optional<Error> MemTableImpl::flushToDisk()
     return std::nullopt;
 };
 
+// TODO: make WAL block-based too
 std::optional<Error> MemTableImpl::replayWal()
 {
     TINYKV_LOG("[MemTableImpl.replayWal()]");
-    const auto &entries = m_wal.getEntries();
+    const auto entries = m_wal.getEntries();
+    if (!entries)
+        return Error{"Failed to read WAL during startup"};
+
     m_readOnly = true;
 
     // read each entry to memtable
@@ -169,7 +188,8 @@ std::optional<Error> MemTableImpl::replayWal()
         // if memtable gets full, flush to disk
         if (m_skiplist.getLength() == m_size)
         {
-            flushToDisk();
+            if (const auto &err = _flushMemTableToDisk(false))
+                return err;
         }
 
         m_skiplist.set(entry);
@@ -178,15 +198,15 @@ std::optional<Error> MemTableImpl::replayWal()
     // flush to disk if memtable is not empty
     if (m_skiplist.getLength() > 0)
     {
-        if (const auto &err = flushToDisk())
+        if (const auto &err = _flushMemTableToDisk(false))
         {
             TINYKV_LOG("[MemTableImpl.replayWal()] Failed to flush to disk: " << err->error);
             return Error{"[MemTableImpl.replayWal()] Failed to replay WAL: Flushing error "};
         }
     }
 
-    // delete WAL
-    m_wal.remove();
+    if (const auto &err = m_wal.remove())
+        return err;
 
     m_readOnly = false;
     return std::nullopt;

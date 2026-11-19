@@ -5,12 +5,14 @@
 #include "core/sstable_manager/sstable_reader.h"
 #include "core/sstable_manager/sstable.h"
 #include "core/storage_manager/storage_manager_impl.h"
+#include "core/wal/wal.h"
 #include "factories/db_factory.h"
 
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -485,6 +487,57 @@ TEST_F(DbStorageTest, CompactionMergesL0IntoNonEmptyL1)
     auto newOnlyKey = db->get("e");
     ASSERT_TRUE(newOnlyKey.ok);
     EXPECT_EQ(newOnlyKey.data, "new-e");
+}
+
+TEST_F(DbStorageTest, ReplaysUnflushedWalAfterRestart)
+{
+    DbFactoryConfig config;
+    config.tableFormat = TableFormatKind::BlockBased;
+
+    {
+        std::unique_ptr<DbImpl> db = DbFactory::createDbWithConfig(config);
+        ASSERT_TRUE(db->put("kept", "old").ok);
+        ASSERT_TRUE(db->put("kept", "latest").ok);
+        ASSERT_TRUE(db->put("deleted", "value").ok);
+        ASSERT_TRUE(db->del("deleted").ok);
+
+        ASSERT_TRUE(std::filesystem::exists("./wal/wal-0"));
+        EXPECT_FALSE(std::filesystem::exists("./sstables/level-0"));
+        db.reset(); // Destroy without flushing the memtable.
+    }
+
+    std::unique_ptr<DbImpl> recovered = DbFactory::createDbWithConfig(config);
+    const auto kept = recovered->get("kept");
+    ASSERT_TRUE(kept.ok);
+    EXPECT_EQ(kept.data, "latest");
+
+    const auto deleted = recovered->get("deleted");
+    EXPECT_FALSE(deleted.ok);
+    EXPECT_FALSE(deleted.data.has_value());
+    EXPECT_FALSE(std::filesystem::exists("./wal/wal-0"));
+}
+
+TEST_F(DbStorageTest, ReplayWalPreservesLogUntilAllCapacityBatchesAreWritten)
+{
+    WAL wal{0, "./wal"};
+    ASSERT_FALSE(wal.append(Entry{"a", "1"}));
+    ASSERT_FALSE(wal.append(Entry{"b", "2"}));
+    ASSERT_FALSE(wal.append(Entry{"c", "3"}));
+    ASSERT_FALSE(wal.append(Entry{"d", "4"}));
+
+    DbFactoryConfig config;
+    config.memtableCapacity = 2;
+    config.tableFormat = TableFormatKind::BlockBased;
+    std::unique_ptr<DbImpl> recovered = DbFactory::createDbWithConfig(config);
+
+    for (const auto &[key, value] : std::vector<std::pair<std::string, std::string>>{
+             {"a", "1"}, {"b", "2"}, {"c", "3"}, {"d", "4"}})
+    {
+        const auto result = recovered->get(key);
+        ASSERT_TRUE(result.ok) << "key=" << key;
+        EXPECT_EQ(result.data, value);
+    }
+    EXPECT_FALSE(std::filesystem::exists("./wal/wal-0"));
 }
 
 // TODO: Write test for SSTableReader.write()

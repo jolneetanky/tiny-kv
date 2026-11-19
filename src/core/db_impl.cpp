@@ -1,6 +1,7 @@
 #include "db_impl.h"
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include "../types/entry.h"
 #include "../common/log.h"
 
@@ -11,6 +12,9 @@ DbImpl::DbImpl(std::unique_ptr<SystemContext> ctx,
                std::unique_ptr<MemTableImpl> mem)
     : m_systemCtx(std::move(ctx)), m_skipList(std::move(skip)), m_wal(std::move(wal)), m_storageManager(std::move(sm)), m_memTable(std::move(mem))
 {
+    if (const auto &error = m_memTable->replayWal())
+        throw std::runtime_error("Failed to replay WAL during startup: " + error->error);
+
     m_compactionWorker = std::thread(&DbImpl::compactionWorkerLoop, this);
 }
 

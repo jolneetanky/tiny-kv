@@ -22,6 +22,7 @@ private:
     SystemContext &m_systemContext;
 
     bool isReadOnly() const;
+    std::optional<Error> _flushMemTableToDisk(bool removeWalAfterWrite);
 
 public:
     MemTableImpl(int size, SkipList &skipList, StorageManager &storageManager, WAL &wal, SystemContext &m_systemContext); // constructor
