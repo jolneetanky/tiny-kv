@@ -266,7 +266,7 @@ namespace
 
         const std::uint32_t numEntries = readUint32BigEndian(input);
 
-        // 
+        //
         for (std::uint32_t i = 0; i < numEntries; ++i)
         {
             std::string entryKey = readString(input);
@@ -369,8 +369,11 @@ namespace
             }
 
             const std::size_t blockIndex = static_cast<std::size_t>(indexIt - m_index.begin());
+
+            // load the block and store in in-memory in this iterator
             _loadBlock(blockIndex);
 
+            // binary search
             const auto entryIt = std::lower_bound(
                 m_currentBlock.begin(), m_currentBlock.end(), target,
                 [](const Entry &entry, const std::string &key)

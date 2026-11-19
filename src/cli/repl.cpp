@@ -34,6 +34,8 @@ int runRepl(Connection &conn)
         }
 
         // Seems counterintuitive to decode and encode the same request again.
+        // a better approach could be to just send the request to the server,
+        // have the server parse/normalize it.
         const std::string encoded = protocol::encodeRequest(req);
         if (!conn.writeAll(encoded))
         {

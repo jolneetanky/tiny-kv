@@ -10,6 +10,10 @@ std::optional<Error> MemTableImpl::put(const std::string &key, const std::string
 {
     // insert into MemTable
     // flush if needed
+
+    // BUG:
+    // actually there is no need for read-only given our current sequential execution
+    // only needed if there can be concurrent PUTs
     if (isReadOnly())
     {
         TINYKV_LOG("[MemTableImpl.put()] Cannot PUT: read only");

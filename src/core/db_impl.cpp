@@ -62,6 +62,7 @@ protocol::Response DbImpl::put(std::string key, std::string val)
 {
     std::lock_guard<std::mutex> lock(m_dbMutex);
     TINYKV_LOG("[DbImpl.put()]");
+
     std::optional<Error> errOpt{(*m_memTable).put(key, val)};
     requestCompactionIfNeeded();
 

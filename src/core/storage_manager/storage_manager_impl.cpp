@@ -28,13 +28,6 @@ std::optional<Error> StorageManagerImpl::write(tinykv::Iterator &entries, int le
     // Write to level 0
     auto &level0Manager{m_levelManagers[0]};
 
-    // std::vector<Entry> entries;
-    // entries.reserve(entryPtrs.size());
-    // for (auto &ptr : entryPtrs)
-    // {
-    //     entries.emplace_back(*ptr);
-    // }
-
     Status status{level0Manager->createTable(entries)};
     if (!status.ok())
     {
@@ -47,8 +40,6 @@ std::optional<Error> StorageManagerImpl::write(tinykv::Iterator &entries, int le
 
 std::optional<Entry> StorageManagerImpl::get(const std::string &key) const
 {
-    // TODO: fix bug where entries from disk need to be initialized and read into memory.
-    // or we can move to block-based SSTables first, then we can get rid of the initialization idea.
     // search all levels
     for (const auto &levelManager : m_levelManagers)
     {

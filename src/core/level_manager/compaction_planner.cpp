@@ -54,16 +54,22 @@ namespace tinykv
         for (std::size_t i = 0; i < destinationTables.size(); ++i)
             ranges.push_back(TableRange{false, destinationTables[i].m_file_number, &destinationTables[i]});
 
+        // sort all tables by (min_key, max_key) ranges to get the intervals
         std::sort(ranges.begin(), ranges.end(), [](const TableRange &left, const TableRange &right)
                   {
                       if (left.metadata->m_min_key != right.metadata->m_min_key)
                           return left.metadata->m_min_key < right.metadata->m_min_key;
                       if (left.metadata->m_max_key != right.metadata->m_max_key)
                           return left.metadata->m_max_key < right.metadata->m_max_key;
+
+                        //  TODO: remove the below `isSource` and fileNumber` checks
+                        // these are redundnat
+                        // because only minkey and maxkey intervals matter right now.
+                        // as long as minkey and maxkey overlap, the files will be placed in the same group
+                        // fileNumber and `isSource` doesn't matter rn.
                       if (left.isSource != right.isSource)
                           return left.isSource;
-                      return left.fileNumber < right.fileNumber;
-                  });
+                      return left.fileNumber < right.fileNumber; });
 
         std::vector<CompactionPlan> plans;
         if (ranges.empty())
@@ -74,6 +80,7 @@ namespace tinykv
 
         for (const TableRange &range : ranges)
         {
+            // end the previous interval (if any) and start a new interval
             if (!hasCurrentPlan || range.metadata->m_min_key > currentPlan.maxKey)
             {
                 if (hasCurrentPlan)

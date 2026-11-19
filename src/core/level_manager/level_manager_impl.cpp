@@ -151,6 +151,7 @@ private:
         return _hasHigherPrecedence(candidateIndex, currentIndex);
     }
 
+    // This is the core compaction algorithm.
     void _selectNext()
     {
         m_valid = false;
@@ -159,7 +160,7 @@ private:
 
         const std::string smallestKey = m_inputs[m_heap.top()].iterator->Key();
 
-        // handle duplicate keys in other streams -- we only want to keep one!
+        // handle duplicate keys in other streams -- we only want to keep one (the highest priority one)!
         // gather every heap entry at the smallest key
         // emit only the highest priority version
         // advance all iterators that had that key
@@ -292,8 +293,7 @@ std::optional<Entry> LevelManagerImpl::getKey(const std::string &key) const
     return std::nullopt;
 };
 
-// time = O(n), because we insert in front
-// but the cost is not significant, as we assume number of SSTables in a level at any one time remains small (thanks to compaction).
+// time = O(1), because we insert to the back
 Status LevelManagerImpl::createTable(tinykv::Iterator &entries)
 {
     TINYKV_LOG("[LevelManagerImpl.createTable()]");
@@ -365,6 +365,7 @@ Status LevelManagerImpl::compactInto(LevelManager &destination, const tinykv::Co
     if (!status.ok())
         return status;
 
+    // now delete source and destination tables
     status = deleteTablesByFileNumber(plan.sourceFileNumbers);
     if (!status.ok())
         return status;

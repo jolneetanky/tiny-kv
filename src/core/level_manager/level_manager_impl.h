@@ -51,10 +51,14 @@ public:
     Status initNew() override;
 
 private:
+    // INVARIANTS
+    // 1. compacts the files within an overlapping group
+    // 2. NO DUPLICATE KEYS
+    // 3. outputs keys in SORTED, ASCENDING ORDER.
     class CompactionMergingIterator;
 
     // IMVARIANTS (very impt, merging algo depends on these invariants):
-    // 1. the `iterator` outputs entries in SORTED, ASCENDING ORDER of keys!!
+    // 1. the `iterator` MUST output entries in SORTED, ASCENDING ORDER of keys!!
     // 2. within each input iterator stream, THERE ARE NO DUPLICATE KEYS.
     struct MergeInput
     {

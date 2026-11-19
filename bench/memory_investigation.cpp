@@ -20,8 +20,8 @@
 
 namespace
 {
-    constexpr int kMemtableCapacity = 1024;
-    constexpr int kRandomStep = 104729; // prime step to spread reads across the key space
+    constexpr int kMemtableCapacity = 1024; // 1024 keys per memtable and hence SSTable
+    constexpr int kRandomStep = 104729;     // prime step to spread reads across the key space
     constexpr int kReadOps = 100000;
 
     struct TestPaths
@@ -243,6 +243,9 @@ namespace
             std::cout << "Running " << kReadOps << " warm reads..." << std::endl;
 
             int64_t cursor = 0;
+
+            // start the timer before the `kReadOps` loop
+            // this calculates the total clock time for a batch of `kReadOps` GET operations
             auto start = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < kReadOps; ++i)
             {

@@ -25,7 +25,7 @@ private:
     std::string m_fullPath;
     Footer m_footer;
     SSTableMetadata m_meta;
-    std::vector<IndexEntry> m_index;
+    std::vector<IndexEntry> m_index; // Index entries are stored in sorted order.
     FilterBlock m_filter;
 };
 

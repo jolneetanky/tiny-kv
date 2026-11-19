@@ -81,3 +81,23 @@ One caveat: the benchmark times the whole 100,000-read loop and divides by the o
 ## Points of improvement
 
 1. For read latency, we could measure latency of individual reads instead of for the entire batch, and collect percentiles + average + throughput
+
+| Keys | Latency: in-memory (µs) | Latency: block-based (µs) | Block-based latency increase | Peak RSS: in-memory (MiB) | Peak RSS: block-based (MiB) | Block-based RSS reduction |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1,024 | 0.268 | 12.576 | 4,589% | 2.59 | 1.94 | 25.3% |
+| 4,096 | 0.225 | 12.349 | 5,386% | 3.16 | 2.02 | 36.1% |
+| 16,384 | 0.301 | 12.562 | 4,069% | 5.08 | 2.28 | 55.1% |
+| 65,536 | 0.457 | 12.669 | 2,674% | 11.94 | 2.42 | 79.7% |
+| 250,000 | 0.833 | 13.536 | 1,526% | 37.58 | 2.84 | 92.4% |
+| 500,000 | 1.517 | 15.433 | 917% | 72.23 | 3.47 | 95.2% |
+| 1,000,000 | 2.842 | 19.638 | 591% | 141.44 | 4.61 | 96.7% |
+| 2,000,000 | 6.884 | 27.611 | 301% | 279.78 | 6.58 | 97.6% |
+| 4,000,000 | 22.614 | 30.549 | 35.1% | 556.34 | 11.14 | 98.0% |
+| 8,000,000 | 29.770 | 109.970 | 269% | 1,109.56 | 20.17 | 98.2% |
+| 10,000,000 | 40.735 | 48.505 | 19.1% | 1,386.70 | 24.81 | 98.2% |
+
+| # | Issue | Why it matters | Improvement |
+|---|---|---|---|
+| 1 | **Only one timed batch per dataset, with no separate warm-up.** The benchmark divides one 100,000-GET batch’s time by 100,000, so it reports a mean but no run-to-run variation or tail latency. | A spike like the 8M result could be noise or a stall, and the “warm read” label doesn’t mean a warm-up pass happened. | Run multiple trials, add an untimed warm-up, and report median plus p95/p99 latency. |
+| 2 | **The GET sequence is deterministic striding, not random sampling.** It advances by 104,729 modulo the key count. | It visits every key before repeating, but access order may interact with table ordering and caching. For small datasets, it cycles through the same keys many times during the batch. | Use a seeded pseudorandom permutation or seeded random sampling, and report the seed. |
+| 3 | **The measurements aren’t isolated from background state.** The benchmark requests compaction after a flush, while the compaction worker can hold the DB mutex during the timed GET loop. Also, dataset sizes run sequentially in one process, and sampled RSS can miss short-lived peaks. | Latency can include compaction lock waits. Later RSS measurements may include memory the allocator retained after earlier runs; RSS sampling every 1,000 GETs can miss brief peaks. | Run each format and dataset size in a fresh process. Either wait for compaction to finish or measure compaction separately. Use an OS peak-RSS metric or sample more frequently. |

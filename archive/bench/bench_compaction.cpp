@@ -1,4 +1,3 @@
-// TODO: update bench
 // #include <benchmark/benchmark.h>
 
 // #include <atomic>

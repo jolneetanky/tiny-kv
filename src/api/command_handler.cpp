@@ -37,6 +37,5 @@ protocol::Response CommandHandler::execute(
 
     default:
         return {false, "Unknown command", std::nullopt};
-        break;
     }
 }
