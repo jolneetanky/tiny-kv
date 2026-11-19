@@ -29,7 +29,7 @@ void SkipListImpl::Iter::SeekToLast()
 
 void SkipListImpl::Iter::Seek(const std::string &target)
 {
-    m_it = m_map->find(target);
+    m_it = m_map->lower_bound(target);
 }
 
 void SkipListImpl::Iter::Next()

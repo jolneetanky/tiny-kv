@@ -17,10 +17,11 @@ struct BlockHandle
     std::uint64_t size = 0;   // 64 bits (8 bytes)
 };
 
-// One index entry points to one data block.
-// `last_key` is the largest key in that data block; lookup can find the first
-// index entry whose last_key is >= the searched key.
-// BlockBasedSSTableReader stores a `std::vector<IndexEntry>`.
+// One index entry points to one non-empty data block. The table writer emits
+// blocks in key order, so index entries are ordered by last_key. `last_key` is
+// the final (largest) key in that block; lookup finds the first index entry
+// whose last_key is >= the searched key. The reader relies on these invariants
+// to search exactly one data block during Seek().
 struct IndexEntry
 {
     std::string last_key; // largest key in this data block

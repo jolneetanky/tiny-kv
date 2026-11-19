@@ -27,8 +27,9 @@ namespace tinykv
         // After this, the iterator is Valid() iff the source is not empty. (Else not valid)
         virtual void SeekToLast() = 0;
 
-        // Moves to the first position with matching target key.
-        // If key is not found, iterator ends up in the last position and is no longer Valid().
+        // Position at the first entry whose key is greater than or equal to
+        // `target` (lower_bound semantics). If no such entry exists, the
+        // iterator becomes invalid. An exact match is not required.
         virtual void Seek(const std::string &target) = 0;
 
         // Advances the iterator to the next key in the source.

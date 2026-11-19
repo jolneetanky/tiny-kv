@@ -351,6 +351,11 @@ namespace
 
         void Seek(const std::string &target) override
         {
+            // The index is ordered by last_key. Each data block is non-empty,
+            // its entries are ordered by key, and its last_key matches its
+            // final entry. Therefore the first block whose last_key >= target
+            // must contain the first entry >= target (if any such entry exists).
+            // Index search: O(log(B)); block decode: O(entries in that block).
             const auto indexIt = std::lower_bound(
                 m_index.begin(), m_index.end(), target,
                 [](const IndexEntry &entry, const std::string &key)
@@ -363,23 +368,22 @@ namespace
                 return;
             }
 
-            std::size_t blockIndex = static_cast<std::size_t>(indexIt - m_index.begin());
-            for (; blockIndex < m_index.size(); ++blockIndex)
-            {
-                _loadBlock(blockIndex);
-                const auto entryIt = std::lower_bound(
-                    m_currentBlock.begin(), m_currentBlock.end(), target,
-                    [](const Entry &entry, const std::string &key)
-                    {
-                        return entry.key < key;
-                    });
-                if (entryIt != m_currentBlock.end())
+            const std::size_t blockIndex = static_cast<std::size_t>(indexIt - m_index.begin());
+            _loadBlock(blockIndex);
+
+            const auto entryIt = std::lower_bound(
+                m_currentBlock.begin(), m_currentBlock.end(), target,
+                [](const Entry &entry, const std::string &key)
                 {
-                    m_entryIndex = static_cast<std::size_t>(entryIt - m_currentBlock.begin());
-                    return;
-                }
+                    return entry.key < key;
+                });
+            if (entryIt == m_currentBlock.end())
+            {
+                throw std::runtime_error(
+                    "BlockBasedTableReader: index last_key does not match data block contents");
             }
-            _invalidate();
+
+            m_entryIndex = static_cast<std::size_t>(entryIt - m_currentBlock.begin());
         }
 
         void Next() override
@@ -448,6 +452,11 @@ namespace
                 m_currentBlock.push_back(Entry{std::move(key), std::move(value), tombstoneByte != 0});
             }
 
+            if (m_currentBlock.empty())
+            {
+                throw std::runtime_error("BlockBasedTableReader: data block must contain at least one entry");
+            }
+
             const std::streampos end = m_input.tellg();
             if (end == std::streampos{-1} || static_cast<std::uint64_t>(end - start) != handle.size)
                 throw std::runtime_error("BlockBasedTableReader: data block size mismatch");
@@ -506,7 +515,6 @@ bool BlockBasedTableReader::withinRange(const std::string &key) const
     return key >= m_meta.m_min_key && key <= m_meta.m_max_key;
 }
 
-// TODO: IMPLf
 std::optional<Entry> BlockBasedTableReader::get(const std::string &key) const
 {
     // find the corresponding index block
@@ -518,6 +526,9 @@ std::optional<Entry> BlockBasedTableReader::get(const std::string &key) const
     {
         return std::nullopt;
     }
+
+    // TODO: Check the loaded Bloom filter here. If it says the key is
+    // definitely absent, skip the index lookup and data-block read.
 
     // find the first index entry wose `lastKey >= key`
     const auto it = std::lower_bound(
